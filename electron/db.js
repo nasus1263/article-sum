@@ -37,9 +37,12 @@ async function insertContent({ url, tag, data }) {
     JSON.stringify(data ?? {}),
     new Date().toISOString(),
   ])
-  persist()
+  // persist() 는 db.export() 를 호출하는데, 이게 last_insert_rowid() 를 0 으로 리셋한다.
+  // 따라서 id 를 먼저 읽고 persist 한다.
   const [{ values }] = d.exec('SELECT last_insert_rowid()')
-  return values[0][0]
+  const id = values[0][0]
+  persist()
+  return id
 }
 
 async function updateContent(id, { tag, data }) {
@@ -69,9 +72,13 @@ async function listByStatus(status) {
   return res[0].values.map(rowToRecord)
 }
 
-async function approve(id) {
+async function approve(id, folder) {
   const d = await getDb()
-  d.run(`UPDATE contents SET status = 'approved' WHERE id = ?`, [id])
+  const res = d.exec(`SELECT data FROM contents WHERE id = ?`, [id])
+  if (res.length === 0) return
+  const data = JSON.parse(res[0].values[0][0])
+  data.folder = folder ?? null
+  d.run(`UPDATE contents SET status = 'approved', data = ? WHERE id = ?`, [JSON.stringify(data), id])
   persist()
 }
 
@@ -81,4 +88,23 @@ async function discard(id) {
   persist()
 }
 
-module.exports = { insertContent, updateContent, listByStatus, approve, discard }
+// 앱 시작 시 활성 job 이 없으므로, processing 상태로 남은 행은 이전 세션이
+// 중간에 끊긴 고아 행이다. 실패로 표시해 UI 에서 Discard 할 수 있게 한다.
+async function resetStuckJobs() {
+  const d = await getDb()
+  const res = d.exec(`SELECT id, data FROM contents WHERE status = 'pending'`)
+  if (res.length === 0) return
+  let changed = false
+  for (const [id, dataStr] of res[0].values) {
+    const data = JSON.parse(dataStr)
+    if (!data.processing) continue
+    data.processing = false
+    delete data.stage
+    data.error = data.error ?? 'Interrupted — the app was restarted while processing.'
+    d.run(`UPDATE contents SET data = ? WHERE id = ?`, [JSON.stringify(data), id])
+    changed = true
+  }
+  if (changed) persist()
+}
+
+module.exports = { insertContent, updateContent, listByStatus, approve, discard, resetStuckJobs }

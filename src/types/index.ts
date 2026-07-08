@@ -1,6 +1,4 @@
-export type Category = 'Politics' | 'Economy' | 'Society' | 'Culture' | 'Sports' | 'IT'
-
-export const CATEGORIES: Category[] = ['Politics', 'Economy', 'Society', 'Culture', 'Sports', 'IT']
+export type Category = string
 
 export type Provider = 'claude' | 'gemini' | 'openai' | 'nvidia'
 
@@ -38,14 +36,4 @@ export interface SummaryOptions {
 export interface SummaryResult {
   category: Category
   summary: string
-}
-
-export interface SummaryRecord {
-  id: number
-  article: string
-  category: Category
-  summary: string
-  language: Language
-  provider: Provider
-  createdAt: string
 }

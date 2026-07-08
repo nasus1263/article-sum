@@ -54,48 +54,53 @@ function broadcastQueueUpdate() {
 }
 
 async function processLink(url) {
-  const id = await db.insertContent({ url, tag: 'Article', data: { processing: true } })
+  const data = { processing: true, stage: 'Fetching article...' }
+  const id = await db.insertContent({ url, tag: 'Article', data })
   broadcastQueueUpdate()
 
   const controller = new AbortController()
   activeJobs.set(id, controller)
+  let tag = 'Article'
 
   try {
-    const { success, text } = await crawl(url, controller.signal)
+    const { success, text, image } = await crawl(url, controller.signal)
     if (controller.signal.aborted) return
 
     if (!success || !text) {
-      await db.updateContent(id, { tag: 'Not Article', data: { processing: false } })
-      broadcastQueueUpdate()
+      tag = 'Not Article'
       return
     }
 
+    data.original = text
+    data.thumbnail = image ?? null
+    data.summaries = {}
+    data.stage = 'Summarizing...'
+    await db.updateContent(id, { data })
+    broadcastQueueUpdate()
+
     const settings = settingsStore.getSettings()
-    const data = { original: text, summaries: {}, processing: true }
-    await db.updateContent(id, { data })
-    broadcastQueueUpdate()
-
-    try {
-      const { category, summary } = await summarizeArticle(
-        text,
-        settings.defaultOptions,
-        settings.defaultProvider,
-        settings.models[settings.defaultProvider],
-        settings.apiKeys,
-        controller.signal
-      )
-      if (controller.signal.aborted) return
-      data.category = category
-      data.summaries[computeOptionKey(settings.defaultOptions)] = summary
-    } catch (e) {
-      if (controller.signal.aborted) return
-      console.error('[summarize] failed:', e)
-    }
-
-    data.processing = false
-    await db.updateContent(id, { data })
-    broadcastQueueUpdate()
+    const { category, summary } = await summarizeArticle(
+      text,
+      settings.defaultOptions,
+      settings.defaultProvider,
+      settings.models[settings.defaultProvider],
+      settings.apiKeys,
+      controller.signal,
+      settings.categories
+    )
+    data.category = category
+    data.summaries[computeOptionKey(settings.defaultOptions)] = summary
+  } catch (e) {
+    if (controller.signal.aborted) return
+    console.error('[processLink] failed:', e)
+    data.error = e instanceof Error ? e.message : String(e)
   } finally {
+    if (!controller.signal.aborted) {
+      data.processing = false
+      delete data.stage
+      await db.updateContent(id, { tag, data })
+      broadcastQueueUpdate()
+    }
     activeJobs.delete(id)
   }
 }
@@ -115,7 +120,8 @@ function registerIpcHandlers() {
   ipcMain.handle('settings:sync', (_event, partial) => settingsStore.updateSettings(partial))
   ipcMain.handle('contents:list', (_event, status) => db.listByStatus(status))
   ipcMain.handle('contents:approve', async (_event, id) => {
-    await db.approve(id)
+    const { activeFolder } = settingsStore.getSettings()
+    await db.approve(id, activeFolder)
     broadcastQueueUpdate()
   })
   ipcMain.handle('contents:discard', async (_event, id) => {
@@ -147,11 +153,16 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerIpcHandlers()
   startSidecar()
+  await db.resetStuckJobs()
   createWindow()
   watchClipboard()
+
+  // setTimeout(()=>{
+  // processLink(`https://www.koreaherald.com/article/10802438`)
+  // }, 5000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

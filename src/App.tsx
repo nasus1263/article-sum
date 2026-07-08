@@ -1,24 +1,20 @@
 import { useEffect, useState } from 'react'
-import Home from './pages/Home'
 import Pending from './pages/Pending'
 import Archive from './pages/Archive'
-import Summaries from './pages/Summaries'
 import Settings from './pages/Settings'
 import { useApiKeys } from './hooks/useApiKeys'
 import { useModels } from './hooks/useModels'
 
-type Page = 'home' | 'pending' | 'archive' | 'summaries' | 'settings'
+type Page = 'pending' | 'archive' | 'settings'
 
 const TABS: { id: Page; label: string }[] = [
-  { id: 'home', label: 'Summarize' },
   { id: 'pending', label: 'Pending Approval' },
   { id: 'archive', label: 'Archive' },
-  { id: 'summaries', label: 'Summary History' },
   { id: 'settings', label: 'Settings' },
 ]
 
 export default function App() {
-  const [page, setPage] = useState<Page>('home')
+  const [page, setPage] = useState<Page>('pending')
   const { keys } = useApiKeys()
   const { models } = useModels()
 
@@ -48,10 +44,8 @@ export default function App() {
           </nav>
         </header>
 
-        {page === 'home' && <Home />}
         {page === 'pending' && <Pending />}
         {page === 'archive' && <Archive />}
-        {page === 'summaries' && <Summaries />}
         {page === 'settings' && <Settings />}
       </div>
     </div>

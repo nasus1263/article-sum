@@ -1,5 +1,3 @@
-const CATEGORIES = ['Politics', 'Economy', 'Society', 'Culture', 'Sports', 'IT']
-
 const CLAUDE_BASE = 'https://api.anthropic.com/v1'
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
 const OPENAI_BASE = 'https://api.openai.com/v1'
@@ -14,23 +12,23 @@ function makeSignal(outerSignal) {
   return outerSignal ? AbortSignal.any([timeoutSignal, outerSignal]) : timeoutSignal
 }
 
-function buildSystemPrompt(options) {
+function buildSystemPrompt(options, categories) {
   const styleLines = []
   if (options.kidFriendly) styleLines.push('Summarize using simple words and short sentences a child could understand.')
   if (options.emoji) styleLines.push('Sprinkle in emojis that fit the content throughout the summary.')
   return `You are an AI that classifies and summarizes news articles.
-Classify the given article into exactly one of these categories: ${CATEGORIES.join(', ')}. The category value must exactly match one from this list.
-Then summarize the article in ${LANGUAGE_NAMES[options.language]} (3-5 sentences).
+Classify the given article into exactly one of these categories: ${categories.join(', ')}. The category value must exactly match one from this list.
+Then summarize the article in ${LANGUAGE_NAMES[options.language]} in exactly 3 lines (3 sentences, one per line, separated by \n).
 ${styleLines.join('\n')}
 Output only the JSON format below. No markdown, no explanations.
-{ "category": "Politics", "summary": "..." }`
+{ "category": "${categories[0]}", "summary": "..." }`
 }
 
-function extractJSON(raw) {
+function extractJSON(raw, categories) {
   const stripped = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
   const fenced = stripped.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
   const parsed = JSON.parse(fenced)
-  if (!CATEGORIES.includes(parsed.category)) throw new Error(`Unknown category: ${parsed.category}`)
+  if (!categories.includes(parsed.category)) throw new Error(`Unknown category: ${parsed.category}`)
   if (typeof parsed.summary !== 'string' || !parsed.summary) throw new Error('Missing summary')
   return parsed
 }
@@ -97,8 +95,8 @@ async function callNvidia(systemPrompt, article, model, key, signal) {
   return data.choices[0].message.content
 }
 
-async function summarizeArticle(article, options, provider, model, keys, signal) {
-  const systemPrompt = buildSystemPrompt(options)
+async function summarizeArticle(article, options, provider, model, keys, signal, categories) {
+  const systemPrompt = buildSystemPrompt(options, categories)
   const key = keys[provider]
   if (!key) throw new Error(`${provider} API key is missing`)
 
@@ -108,7 +106,7 @@ async function summarizeArticle(article, options, provider, model, keys, signal)
   else if (provider === 'openai') raw = await callOpenAI(systemPrompt, article, model, key, signal)
   else raw = await callNvidia(systemPrompt, article, model, key, signal)
 
-  return extractJSON(raw)
+  return extractJSON(raw, categories)
 }
 
 module.exports = { summarizeArticle }
