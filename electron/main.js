@@ -5,7 +5,7 @@ const settingsStore = require('./settingsStore')
 const db = require('./db')
 const chatStore = require('./chatStore')
 const imageCache = require('./imageCache')
-const { summarizeArticle, streamChat } = require('./llm')
+const { summarizeArticle, streamChat, embedText } = require('./llm')
 
 const SIDECAR_PORT = 8787
 const SIDECAR_URL = `http://127.0.0.1:${SIDECAR_PORT}`
@@ -13,6 +13,7 @@ const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
 const SIDECAR_RETRY_DELAY_MS = 5000
 const SIDECAR_MAX_RETRIES = 5
+const EMBED_TRUNCATE_CHARS = 6000
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -155,6 +156,7 @@ async function processLink(url) {
   const controller = new AbortController()
   activeJobs.set(id, controller)
   let tag = 'Article'
+  let embedding
 
   showOverlay('✨ Analyzing link...')
 
@@ -175,9 +177,19 @@ async function processLink(url) {
     await db.updateContent(id, { data })
     broadcastQueueUpdate()
 
+    const settings = settingsStore.getSettings()
+
+    try {
+      const openaiKey = settings.apiKeys.openai
+      if (!openaiKey) throw new Error('OpenAI API key is missing (required for embeddings)')
+      embedding = await embedText(text.slice(0, EMBED_TRUNCATE_CHARS), openaiKey, controller.signal)
+    } catch (e) {
+      console.error('[processLink] embedding failed:', e)
+      data.embeddingError = e instanceof Error ? e.message : String(e)
+    }
+
     setOverlayText('✨ Summarizing article...').catch((e) => console.error('[overlay] update failed:', e))
 
-    const settings = settingsStore.getSettings()
     const { category, summary } = await summarizeArticle(
       text,
       settings.defaultOptions,
@@ -198,7 +210,7 @@ async function processLink(url) {
     if (!controller.signal.aborted) {
       data.processing = false
       delete data.stage
-      await db.updateContent(id, { tag, data })
+      await db.updateContent(id, { tag, data, embedding })
       broadcastQueueUpdate()
     }
     activeJobs.delete(id)
@@ -219,6 +231,7 @@ function registerIpcHandlers() {
   ipcMain.handle('settings:get', () => settingsStore.getSettings())
   ipcMain.handle('settings:sync', (_event, partial) => settingsStore.updateSettings(partial))
   ipcMain.handle('contents:list', (_event, status) => db.listByStatus(status))
+  ipcMain.handle('contents:related', (_event, id) => db.getRelated(id))
   ipcMain.handle('contents:approve', async (_event, id) => {
     const { activeFolder } = settingsStore.getSettings()
     await db.approve(id, activeFolder)

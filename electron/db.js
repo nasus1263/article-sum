@@ -90,13 +90,20 @@ async function insertContent({ url, tag, data }) {
   return row.id
 }
 
-async function updateContent(id, { tag, data }) {
+async function updateContent(id, { tag, data, embedding }) {
   const patch = {}
   if (tag !== undefined) patch.tag = tag
   if (data !== undefined) patch.data = data
+  if (embedding !== undefined) patch.embedding = embedding
   if (Object.keys(patch).length === 0) return
   const { error } = await getClient().from('contents').update(patch).eq('id', id)
   if (error) throw error
+}
+
+async function getRelated(id) {
+  const { data, error } = await getClient().rpc('match_contents', { source_id: id })
+  if (error) throw error
+  return data.map(rowToRecord)
 }
 
 async function listByStatus(status) {
@@ -142,6 +149,7 @@ async function resetStuckJobs() {
 module.exports = {
   insertContent,
   updateContent,
+  getRelated,
   listByStatus,
   approve,
   discard,

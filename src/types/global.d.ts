@@ -56,6 +56,7 @@ export interface ContentRecord {
     thumbnail?: string | null
     error?: string
     folder?: string | null
+    embeddingError?: string
   }
   createdAt: string
 }
@@ -68,6 +69,7 @@ export interface ElectronApi {
   approve: (id: number) => Promise<void>
   discard: (id: number) => Promise<void>
   cancel: (id: number) => Promise<void>
+  getRelated: (id: number) => Promise<ContentRecord[]>
   onQueueUpdate: (callback: () => void) => () => void
   authSignUp: (email: string, password: string) => Promise<AuthUser | null>
   authSignIn: (email: string, password: string) => Promise<AuthUser | null>

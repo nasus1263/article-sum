@@ -12,6 +12,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
+  const [relatedMap, setRelatedMap] = useState<Map<number, ContentRecord[]>>(new Map())
 
   function refresh() {
     window.api?.listApproved().then(setRecords)
@@ -34,6 +35,11 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
       else next.add(id)
       return next
     })
+    if (!relatedMap.has(id)) {
+      window.api?.getRelated(id).then((related) => {
+        setRelatedMap((prev) => new Map(prev).set(id, related))
+      })
+    }
   }
 
   function toggleCategoryFilter(category: string) {
@@ -195,6 +201,14 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                   {r.data.category && (
                     <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
                   )}
+                  {r.data.embeddingError && (
+                    <span
+                      title={r.data.embeddingError}
+                      className="inline-block bg-amber-900/50 text-amber-400 text-xs px-2 py-1 rounded-full"
+                    >
+                      ⚠ 관련 기사 검색 제외
+                    </span>
+                  )}
                   <span className="text-xs text-slate-600 ml-auto">{new Date(r.createdAt).toLocaleString('en-US')}</span>
                 </div>
                 {r.data.title && <p className="text-sm font-semibold text-slate-100">{r.data.title}</p>}
@@ -202,6 +216,42 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                   <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
                 )}
                 {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
+                {(relatedMap.get(r.id)?.length ?? 0) > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <h4 className="text-xs font-semibold text-slate-400">관련 기사</h4>
+                    <div className="flex flex-row gap-3 overflow-x-auto pb-1">
+                      {relatedMap.get(r.id)!.map((related) => {
+                        const relatedSummary = related.data.summaries ? Object.values(related.data.summaries)[0] : undefined
+                        return (
+                          <button
+                            key={related.id}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setFullTextRecord(related)
+                            }}
+                            className="text-left bg-slate-800/70 hover:bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col gap-1 w-48 flex-shrink-0"
+                          >
+                            {related.data.thumbnail ? (
+                              <img
+                                src={cachedImageSrc(related.data.thumbnail)}
+                                alt=""
+                                className="h-20 w-full object-cover rounded-md"
+                              />
+                            ) : (
+                              <div className="h-20 w-full rounded-md bg-slate-700" />
+                            )}
+                            <span className="text-xs font-semibold text-slate-100 line-clamp-2">
+                              {related.data.title ?? related.url}
+                            </span>
+                            {relatedSummary && (
+                              <span className="text-xs text-slate-400 line-clamp-2">{relatedSummary}</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-end gap-2">
                   {r.data.original && (
                     <button

@@ -95,6 +95,20 @@ async function callNvidia(systemPrompt, article, model, key, signal) {
   return data.choices[0].message.content
 }
 
+const EMBEDDING_MODEL = 'text-embedding-3-small'
+
+async function embedText(text, key, signal) {
+  const res = await fetch(`${OPENAI_BASE}/embeddings`, {
+    method: 'POST',
+    signal: makeSignal(signal),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
+  })
+  if (!res.ok) throw new Error(`OpenAI embeddings ${res.status}: ${await res.text()}`)
+  const data = await res.json()
+  return data.data[0].embedding
+}
+
 async function summarizeArticle(article, options, provider, model, keys, signal, categories) {
   const systemPrompt = buildSystemPrompt(options, categories)
   const key = keys[provider]
@@ -224,4 +238,4 @@ async function streamChat(provider, articleText, history, model, keys, onChunk, 
   return streamOpenAiCompatibleChat(NVIDIA_BASE, systemPrompt, history, model, key, onChunk, signal)
 }
 
-module.exports = { summarizeArticle, streamChat }
+module.exports = { summarizeArticle, streamChat, embedText }
