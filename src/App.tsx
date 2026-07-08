@@ -5,7 +5,6 @@ import Settings from './pages/Settings'
 import Chat from './pages/Chat'
 import { useApiKeys } from './hooks/useApiKeys'
 import { useModels } from './hooks/useModels'
-import type { ContentRecord } from './types/global'
 
 type Page = 'pending' | 'archive' | 'chat' | 'settings'
 
@@ -19,7 +18,6 @@ const TABS: { id: Page; label: string }[] = [
 export default function App() {
   const [page, setPage] = useState<Page>('pending')
   const [chatTarget, setChatTarget] = useState<number | null>(null)
-  const [pendingRecords, setPendingRecords] = useState<ContentRecord[]>([])
   const { keys } = useApiKeys()
   const { models } = useModels()
 
@@ -28,16 +26,6 @@ export default function App() {
   useEffect(() => {
     window.api?.syncSettings({ apiKeys: keys, models })
   }, [keys, models])
-
-  useEffect(() => {
-    function refresh() {
-      window.api?.listPending().then(setPendingRecords)
-    }
-    refresh()
-    return window.api?.onQueueUpdate(refresh)
-  }, [])
-
-  const isSummarizing = pendingRecords.some((r) => r.data.processing && r.tag === 'Article')
 
   function handleChatWithArticle(contentId: number) {
     setChatTarget(contentId)
@@ -74,15 +62,6 @@ export default function App() {
           </div>
         )}
       </div>
-
-      {isSummarizing && (
-        <div className="fixed left-1/2 bottom-[10%] -translate-x-1/2 pointer-events-none z-50">
-          <div className="flex items-center gap-2.5 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-full px-5 py-3 shadow-lg shadow-black/40">
-            <span className="h-3.5 w-3.5 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
-            <span className="text-sm font-medium text-slate-100">Summarizing article...</span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

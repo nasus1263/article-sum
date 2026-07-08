@@ -1,4 +1,4 @@
-const { app, BrowserWindow, clipboard, ipcMain, protocol, Menu } = require('electron')
+const { app, BrowserWindow, clipboard, ipcMain, protocol, Menu, screen } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
 const settingsStore = require('./settingsStore')
@@ -19,7 +19,48 @@ protocol.registerSchemesAsPrivileged([
 let sidecarProcess = null
 let lastClipboardText = ''
 let mainWindow = null
+let overlayWindow = null
+let summarizingCount = 0
 const activeJobs = new Map()
+
+function createOverlayWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const overlayWidth = 260
+  const overlayHeight = 48
+  overlayWindow = new BrowserWindow({
+    width: overlayWidth,
+    height: overlayHeight,
+    x: Math.round((width - overlayWidth) / 2),
+    y: Math.round(height * 0.9 - overlayHeight / 2),
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    focusable: false,
+    hasShadow: false,
+    show: false,
+    webPreferences: { contextIsolation: true },
+  })
+  overlayWindow.setIgnoreMouseEvents(true)
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+  overlayWindow.loadFile(path.join(__dirname, 'overlay.html'))
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
+  })
+}
+
+function beginSummarizing() {
+  summarizingCount++
+  if (!overlayWindow) createOverlayWindow()
+  overlayWindow.showInactive()
+}
+
+function endSummarizing() {
+  summarizingCount = Math.max(0, summarizingCount - 1)
+  if (summarizingCount === 0) overlayWindow?.hide()
+}
 
 function computeOptionKey(options) {
   const parts = []
@@ -79,6 +120,7 @@ async function processLink(url) {
   const controller = new AbortController()
   activeJobs.set(id, controller)
   let tag = 'Article'
+  let summarizingStarted = false
 
   try {
     const { success, text, image } = await crawl(url, controller.signal)
@@ -95,6 +137,9 @@ async function processLink(url) {
     data.stage = 'Summarizing...'
     await db.updateContent(id, { data })
     broadcastQueueUpdate()
+
+    summarizingStarted = true
+    beginSummarizing()
 
     const settings = settingsStore.getSettings()
     const { category, summary } = await summarizeArticle(
@@ -113,6 +158,7 @@ async function processLink(url) {
     console.error('[processLink] failed:', e)
     data.error = e instanceof Error ? e.message : String(e)
   } finally {
+    if (summarizingStarted) endSummarizing()
     if (!controller.signal.aborted) {
       data.processing = false
       delete data.stage
