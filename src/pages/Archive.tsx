@@ -143,6 +143,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                           <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
                         )}
                       </div>
+                      {r.data.title && <p className="text-sm font-semibold text-slate-100 truncate">{r.data.title}</p>}
                       {summary && <p className="text-xs text-slate-400 whitespace-pre-wrap">{summary}</p>}
                     </div>
                     <span className="text-slate-600 text-xs flex-shrink-0">▸</span>
@@ -196,6 +197,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                   )}
                   <span className="text-xs text-slate-600 ml-auto">{new Date(r.createdAt).toLocaleString('en-US')}</span>
                 </div>
+                {r.data.title && <p className="text-sm font-semibold text-slate-100">{r.data.title}</p>}
                 {r.data.thumbnail && (
                   <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
                 )}
@@ -258,7 +260,12 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
             className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 max-w-2xl w-full max-h-[80vh]"
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 break-all flex-1">{fullTextRecord.url}</span>
+              <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                {fullTextRecord.data.title && (
+                  <span className="text-sm font-semibold text-slate-100 truncate">{fullTextRecord.data.title}</span>
+                )}
+                <span className="text-xs text-slate-500 break-all">{fullTextRecord.url}</span>
+              </div>
               <button
                 onClick={() => setFullTextRecord(null)}
                 className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 flex-shrink-0"

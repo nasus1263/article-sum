@@ -214,7 +214,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
                   <div className="h-10 w-10 rounded-lg bg-slate-800 flex-shrink-0" />
                 )}
                 <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-                  <span className="text-sm font-medium truncate">{article.data.category ?? 'Article'}</span>
+                  <span className="text-sm font-medium truncate">{article.data.title ?? article.data.category ?? 'Article'}</span>
                   <span className="text-xs text-slate-500 truncate">{summary?.lastMessage ?? article.url}</span>
                 </div>
               </button>
@@ -249,14 +249,19 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
         {selectedArticle ? (
           <>
             <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b-2 border-indigo-500/50 shadow-[0_4px_16px_-6px_rgba(99,102,241,0.4)] flex-wrap">
-              <a
-                href={selectedArticle.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-indigo-400 truncate hover:underline"
-              >
-                {selectedArticle.url}
-              </a>
+              <div className="flex flex-col min-w-0 gap-0.5">
+                {selectedArticle.data.title && (
+                  <span className="text-sm font-semibold text-slate-100 truncate">{selectedArticle.data.title}</span>
+                )}
+                <a
+                  href={selectedArticle.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-indigo-400 truncate hover:underline"
+                >
+                  {selectedArticle.url}
+                </a>
+              </div>
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value as Provider)}

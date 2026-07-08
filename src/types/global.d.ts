@@ -43,6 +43,7 @@ export interface ContentRecord {
   status: 'pending' | 'approved'
   data: {
     original?: string
+    title?: string | null
     category?: string
     summaries?: Record<string, string>
     processing?: boolean

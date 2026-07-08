@@ -9,7 +9,7 @@ const inputClass =
 
 export default function Pending() {
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
   const { defaults, updateActiveFolder } = usePipelineDefaults()
 
   function refresh() {
@@ -35,15 +35,6 @@ export default function Pending() {
   async function handleCancel(id: number) {
     await window.api?.cancel(id)
     refresh()
-  }
-
-  function toggleExpanded(id: number) {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
   }
 
   if (!window.api) {
@@ -78,7 +69,6 @@ export default function Pending() {
 
       {records?.map((r) => {
         const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
-        const isExpanded = expanded.has(r.id)
         return (
           <section key={r.id} className={cardClass}>
             <div className="flex items-center gap-2 flex-wrap">
@@ -100,6 +90,7 @@ export default function Pending() {
               )}
               <span className="text-xs text-slate-600 ml-auto">{new Date(r.createdAt).toLocaleString('en-US')}</span>
             </div>
+            {r.data.title && <p className="text-sm font-semibold text-slate-100">{r.data.title}</p>}
             <a href={r.url} target="_blank" rel="noreferrer" className="text-xs text-indigo-400 break-all hover:underline">
               {r.url}
             </a>
@@ -112,16 +103,13 @@ export default function Pending() {
                 {r.data.error}
               </p>
             )}
-            {isExpanded && r.data.original && (
-              <p className="whitespace-pre-wrap text-slate-400 text-sm leading-relaxed">{r.data.original}</p>
-            )}
             <div className="flex gap-2 justify-end">
               {r.data.original && (
                 <button
-                  onClick={() => toggleExpanded(r.id)}
+                  onClick={() => setFullTextRecord(r)}
                   className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5"
                 >
-                  {isExpanded ? 'Hide full article' : 'Show full article'}
+                  Show full article
                 </button>
               )}
               {r.data.processing ? (
@@ -151,6 +139,36 @@ export default function Pending() {
           </section>
         )
       })}
+
+      {fullTextRecord && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
+          onClick={() => setFullTextRecord(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 max-w-2xl w-full max-h-[80vh]"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                {fullTextRecord.data.title && (
+                  <span className="text-sm font-semibold text-slate-100 truncate">{fullTextRecord.data.title}</span>
+                )}
+                <span className="text-xs text-slate-500 break-all">{fullTextRecord.url}</span>
+              </div>
+              <button
+                onClick={() => setFullTextRecord(null)}
+                className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 flex-shrink-0"
+              >
+                Close
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed overflow-y-auto">
+              {fullTextRecord.data.original}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

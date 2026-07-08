@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
     nvidia: 'meta/llama-3.3-70b-instruct',
   },
   defaultProvider: 'claude',
-  defaultOptions: { emoji: false, kidFriendly: false, language: 'ko' },
+  defaultOptions: { emoji: true, kidFriendly: false, language: 'ko' },
   categories: ['Politics', 'Economy', 'Society', 'Culture', 'Entertainment', 'Sports', 'IT'],
   activeFolder: null,
   supabase: { url: '', anonKey: '' },

@@ -152,7 +152,7 @@ async function processLink(url) {
   showOverlay('✨ Analyzing link...')
 
   try {
-    const { success, text, image } = await crawlWithRetry(url, controller.signal)
+    const { success, text, image, title } = await crawlWithRetry(url, controller.signal)
     if (controller.signal.aborted) return
 
     if (!success || !text) {
@@ -162,6 +162,7 @@ async function processLink(url) {
 
     data.original = text
     data.thumbnail = image ?? null
+    data.title = title ?? null
     data.summaries = {}
     data.stage = 'Summarizing...'
     await db.updateContent(id, { data })
