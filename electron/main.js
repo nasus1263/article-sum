@@ -10,7 +10,6 @@ const { streamChat } = require('./llm')
 const BACKEND_PORT = 3000
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
-const CLIPBOARD_POLL_MS = 1500
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -182,12 +181,14 @@ async function processLink(url) {
 
 function watchClipboard() {
   lastClipboardText = clipboard.readText()
-  setInterval(() => {
-    const text = clipboard.readText().trim()
-    if (!text || text === lastClipboardText) return
-    lastClipboardText = text
-    if (isAuthenticated && URL_RE.test(text)) processLink(text)
-  }, CLIPBOARD_POLL_MS)
+  if (mainWindow) {
+    mainWindow.on('focus', () => {
+      const text = clipboard.readText().trim()
+      if (!text || text === lastClipboardText) return
+      lastClipboardText = text
+      if (isAuthenticated && URL_RE.test(text)) processLink(text)
+    })
+  }
 }
 
 function registerIpcHandlers() {
