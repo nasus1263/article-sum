@@ -10,7 +10,8 @@ const { streamChat } = require('./llm')
 const URL_RE = /^https?:\/\/\S+$/i
 
 function getBackendUrl() {
-  return settingsStore.getSettings().backendUrl || 'http://127.0.0.1:3000'
+  const url = settingsStore.getSettings().backendUrl || 'http://127.0.0.1:3000'
+  return url.replace(/\/+$/, '')
 }
 
 function getBackendPort() {
