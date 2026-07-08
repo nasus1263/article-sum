@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react'
 import Pending from './pages/Pending'
 import Archive from './pages/Archive'
 import Settings from './pages/Settings'
+import Chat from './pages/Chat'
 import { useApiKeys } from './hooks/useApiKeys'
 import { useModels } from './hooks/useModels'
 
-type Page = 'pending' | 'archive' | 'settings'
+type Page = 'pending' | 'archive' | 'chat' | 'settings'
 
 const TABS: { id: Page; label: string }[] = [
   { id: 'pending', label: 'Pending Approval' },
   { id: 'archive', label: 'Archive' },
+  { id: 'chat', label: 'Chat' },
   { id: 'settings', label: 'Settings' },
 ]
 
 export default function App() {
   const [page, setPage] = useState<Page>('pending')
+  const [chatTarget, setChatTarget] = useState<number | null>(null)
   const { keys } = useApiKeys()
   const { models } = useModels()
 
@@ -24,29 +27,40 @@ export default function App() {
     window.api?.syncSettings({ apiKeys: keys, models })
   }, [keys, models])
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="w-full max-w-2xl mx-auto p-6 flex flex-col gap-6">
-        <header className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-bold">Article Summary</h1>
-          <nav className="flex gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 flex-wrap">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setPage(t.id)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  page === t.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        </header>
+  function handleChatWithArticle(contentId: number) {
+    setChatTarget(contentId)
+    setPage('chat')
+  }
 
-        {page === 'pending' && <Pending />}
-        {page === 'archive' && <Archive />}
-        {page === 'settings' && <Settings />}
+  return (
+    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+      <header className="shrink-0 w-full max-w-2xl mx-auto p-6 pb-4 flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold">Article Summary</h1>
+        <nav className="flex gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 flex-wrap">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setPage(t.id)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                page === t.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <div className={`flex-1 min-h-0 ${page === 'chat' ? '' : 'overflow-y-auto'}`}>
+        {page === 'chat' ? (
+          <Chat initialContentId={chatTarget} />
+        ) : (
+          <div className="w-full max-w-2xl mx-auto p-6 pt-0 flex flex-col gap-6">
+            {page === 'pending' && <Pending />}
+            {page === 'archive' && <Archive onChatWithArticle={handleChatWithArticle} />}
+            {page === 'settings' && <Settings />}
+          </div>
+        )}
       </div>
     </div>
   )

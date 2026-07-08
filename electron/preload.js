@@ -13,4 +13,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('queue:updated', listener)
     return () => ipcRenderer.removeListener('queue:updated', listener)
   },
+  chatGetSession: (contentId) => ipcRenderer.invoke('chat:get', contentId),
+  chatListSessions: () => ipcRenderer.invoke('chat:list'),
+  chatSend: (contentId, payload) => ipcRenderer.invoke('chat:send', contentId, payload),
+  onChatEvent: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('chat:event', listener)
+    return () => ipcRenderer.removeListener('chat:event', listener)
+  },
 })

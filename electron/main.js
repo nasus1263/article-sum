@@ -1,14 +1,20 @@
-const { app, BrowserWindow, clipboard, ipcMain } = require('electron')
+const { app, BrowserWindow, clipboard, ipcMain, protocol, Menu } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
 const settingsStore = require('./settingsStore')
 const db = require('./db')
-const { summarizeArticle } = require('./llm')
+const chatStore = require('./chatStore')
+const imageCache = require('./imageCache')
+const { summarizeArticle, streamChat } = require('./llm')
 
 const SIDECAR_PORT = 8787
 const SIDECAR_URL = `http://127.0.0.1:${SIDECAR_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
+])
 
 let sidecarProcess = null
 let lastClipboardText = ''
@@ -53,9 +59,21 @@ function broadcastQueueUpdate() {
   }
 }
 
+function broadcastChatEvent(payload) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('chat:event', payload)
+  }
+}
+
 async function processLink(url) {
   const data = { processing: true, stage: 'Fetching article...' }
-  const id = await db.insertContent({ url, tag: 'Article', data })
+  let id
+  try {
+    id = await db.insertContent({ url, tag: 'Article', data })
+  } catch (e) {
+    console.error('[processLink] insertContent failed:', e)
+    return
+  }
   broadcastQueueUpdate()
 
   const controller = new AbortController()
@@ -126,6 +144,7 @@ function registerIpcHandlers() {
   })
   ipcMain.handle('contents:discard', async (_event, id) => {
     await db.discard(id)
+    chatStore.deleteSession(id)
     broadcastQueueUpdate()
   })
   ipcMain.handle('contents:cancel', async (_event, id) => {
@@ -133,12 +152,38 @@ function registerIpcHandlers() {
     await db.discard(id)
     broadcastQueueUpdate()
   })
+
+  ipcMain.handle('chat:get', (_event, contentId) => chatStore.getSession(contentId))
+  ipcMain.handle('chat:list', () => chatStore.listSessions())
+  ipcMain.handle('chat:send', async (_event, contentId, { text, provider, articleText }) => {
+    chatStore.appendMessage(contentId, { role: 'user', content: text, createdAt: new Date().toISOString() })
+    chatStore.setProvider(contentId, provider)
+
+    const settings = settingsStore.getSettings()
+    const session = chatStore.getSession(contentId)
+    try {
+      const reply = await streamChat(
+        provider,
+        articleText,
+        session.messages,
+        settings.models[provider],
+        settings.apiKeys,
+        (chunk) => broadcastChatEvent({ type: 'chunk', contentId, chunk })
+      )
+      chatStore.appendMessage(contentId, { role: 'assistant', content: reply, createdAt: new Date().toISOString() })
+      broadcastChatEvent({ type: 'done', contentId })
+    } catch (e) {
+      console.error('[chat:send] failed:', e)
+      broadcastChatEvent({ type: 'error', contentId, error: e instanceof Error ? e.message : String(e) })
+    }
+  })
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 800,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -154,9 +199,11 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null)
+  protocol.handle('appimg', imageCache.fetchImage)
   registerIpcHandlers()
   startSidecar()
-  await db.resetStuckJobs()
+  await db.resetStuckJobs().catch((e) => console.error('[db] resetStuckJobs failed:', e.message))
   createWindow()
   watchClipboard()
 

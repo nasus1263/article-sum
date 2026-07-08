@@ -109,4 +109,119 @@ async function summarizeArticle(article, options, provider, model, keys, signal,
   return extractJSON(raw, categories)
 }
 
-module.exports = { summarizeArticle }
+function buildChatSystemPrompt(articleText) {
+  return `You are a helpful assistant answering questions about the article below. Use it as your primary source of truth. If the question cannot be answered from the article, say so clearly.
+
+Article:
+${articleText}`
+}
+
+async function consumeSSE(response, onEvent) {
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop()
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith('data:')) continue
+      const payload = trimmed.slice(5).trim()
+      if (!payload || payload === '[DONE]') continue
+      try {
+        onEvent(JSON.parse(payload))
+      } catch {
+        // ignore malformed/partial SSE payloads
+      }
+    }
+  }
+}
+
+async function streamClaudeChat(systemPrompt, history, model, key, onChunk, signal) {
+  const res = await fetch(`${CLAUDE_BASE}/messages`, {
+    method: 'POST',
+    signal: makeSignal(signal),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model,
+      max_tokens: MAX_TOKENS,
+      system: systemPrompt,
+      messages: history.map((m) => ({ role: m.role, content: m.content })),
+      stream: true,
+    }),
+  })
+  let full = ''
+  await consumeSSE(res, (event) => {
+    if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+      full += event.delta.text
+      onChunk(event.delta.text)
+    }
+  })
+  return full
+}
+
+async function streamGeminiChat(systemPrompt, history, model, key, onChunk, signal) {
+  const contents = history.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }))
+  const res = await fetch(`${GEMINI_BASE}/models/${model}:streamGenerateContent?alt=sse&key=${key}`, {
+    method: 'POST',
+    signal: makeSignal(signal),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: { maxOutputTokens: MAX_TOKENS },
+    }),
+  })
+  let full = ''
+  await consumeSSE(res, (event) => {
+    const text = event.candidates?.[0]?.content?.parts?.[0]?.text
+    if (text) {
+      full += text
+      onChunk(text)
+    }
+  })
+  return full
+}
+
+async function streamOpenAiCompatibleChat(base, systemPrompt, history, model, key, onChunk, signal) {
+  const res = await fetch(`${base}/chat/completions`, {
+    method: 'POST',
+    signal: makeSignal(signal),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'system', content: systemPrompt }, ...history.map((m) => ({ role: m.role, content: m.content }))],
+      max_tokens: MAX_TOKENS,
+      stream: true,
+    }),
+  })
+  let full = ''
+  await consumeSSE(res, (event) => {
+    const text = event.choices?.[0]?.delta?.content
+    if (text) {
+      full += text
+      onChunk(text)
+    }
+  })
+  return full
+}
+
+async function streamChat(provider, articleText, history, model, keys, onChunk, signal) {
+  const key = keys[provider]
+  if (!key) throw new Error(`${provider} API key is missing`)
+  const systemPrompt = buildChatSystemPrompt(articleText)
+
+  if (provider === 'claude') return streamClaudeChat(systemPrompt, history, model, key, onChunk, signal)
+  if (provider === 'gemini') return streamGeminiChat(systemPrompt, history, model, key, onChunk, signal)
+  if (provider === 'openai') return streamOpenAiCompatibleChat(OPENAI_BASE, systemPrompt, history, model, key, onChunk, signal)
+  return streamOpenAiCompatibleChat(NVIDIA_BASE, systemPrompt, history, model, key, onChunk, signal)
+}
+
+module.exports = { summarizeArticle, streamChat }

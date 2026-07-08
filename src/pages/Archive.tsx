@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ContentRecord } from '../types/global'
+import { cachedImageSrc } from '../utils/imageCache'
 
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 const inputClass =
   'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
-export default function Archive() {
+export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id: number) => void }) {
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
@@ -123,7 +124,7 @@ export default function Archive() {
                   className={`${cardClass} h-[100px] flex-row items-center gap-3 p-2 cursor-pointer hover:border-slate-600 hover:bg-slate-900/80 transition-colors`}
                 >
                   {r.data.thumbnail ? (
-                    <img src={r.data.thumbnail} alt="" className="h-full w-[84px] object-cover rounded-lg flex-shrink-0" />
+                    <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="h-full w-[84px] object-cover rounded-lg flex-shrink-0" />
                   ) : (
                     <div className="h-full w-[84px] rounded-lg bg-slate-800 flex-shrink-0" />
                   )}
@@ -177,10 +178,21 @@ export default function Archive() {
                   {r.url}
                 </a>
                 {r.data.thumbnail && (
-                  <img src={r.data.thumbnail} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
+                  <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
                 )}
                 {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  {r.data.original && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onChatWithArticle(r.id)
+                      }}
+                      className="text-xs bg-indigo-600 hover:bg-indigo-500 rounded-lg px-3 py-1.5 font-medium"
+                    >
+                      Chat with this article
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()

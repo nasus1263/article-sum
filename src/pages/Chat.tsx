@@ -1,0 +1,252 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ChatMessage, ChatSession, ChatSessionSummary, ContentRecord } from '../types/global'
+import type { Provider } from '../types'
+import { PROVIDERS } from '../types'
+import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
+import { cachedImageSrc } from '../utils/imageCache'
+
+const inputClass =
+  'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+
+export default function Chat({ initialContentId }: { initialContentId: number | null }) {
+  const [articles, setArticles] = useState<ContentRecord[] | null>(null)
+  const [sessionSummaries, setSessionSummaries] = useState<ChatSessionSummary[]>([])
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [session, setSession] = useState<ChatSession | null>(null)
+  const [optimistic, setOptimistic] = useState<ChatMessage[]>([])
+  const [streamingText, setStreamingText] = useState('')
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [provider, setProvider] = useState<Provider>('claude')
+  const { defaults } = usePipelineDefaults()
+
+  const selectedIdRef = useRef(selectedId)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  function refreshSessionList() {
+    window.api?.chatListSessions().then(setSessionSummaries)
+  }
+
+  useEffect(() => {
+    window.api?.listApproved().then(setArticles)
+    refreshSessionList()
+  }, [])
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId
+  }, [selectedId])
+
+  useEffect(() => {
+    return window.api?.onChatEvent((event) => {
+      if (event.contentId !== selectedIdRef.current) return
+      if (event.type === 'chunk') {
+        setStreamingText((prev) => prev + (event.chunk ?? ''))
+      } else if (event.type === 'done') {
+        setStreamingText('')
+        setSending(false)
+        setOptimistic([])
+        window.api?.chatGetSession(event.contentId).then(setSession)
+        refreshSessionList()
+      } else if (event.type === 'error') {
+        setStreamingText('')
+        setSending(false)
+        setOptimistic([])
+        setError(event.error ?? 'Unknown error')
+        window.api?.chatGetSession(event.contentId).then(setSession)
+      }
+    })
+  }, [])
+
+  function openSession(id: number) {
+    setSelectedId(id)
+    setOptimistic([])
+    setStreamingText('')
+    setError(null)
+    setDraft('')
+    window.api?.chatGetSession(id).then(setSession)
+  }
+
+  useEffect(() => {
+    if (initialContentId != null) openSession(initialContentId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialContentId])
+
+  useEffect(() => {
+    setProvider(session?.provider ?? defaults?.defaultProvider ?? 'claude')
+  }, [session, defaults])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'end' })
+  }, [session, optimistic, streamingText])
+
+  const articleMap = useMemo(() => new Map((articles ?? []).map((a) => [a.id, a])), [articles])
+  const summaryMap = useMemo(() => new Map(sessionSummaries.map((s) => [s.contentId, s])), [sessionSummaries])
+
+  const sidebarIds = useMemo(() => {
+    const ids = new Set(summaryMap.keys())
+    if (selectedId != null) ids.add(selectedId)
+    return [...ids]
+      .filter((id) => articleMap.has(id))
+      .sort((a, b) => {
+        const ta = summaryMap.get(a)?.updatedAt
+        const tb = summaryMap.get(b)?.updatedAt
+        if (!ta && !tb) return 0
+        if (!ta) return -1
+        if (!tb) return 1
+        return tb.localeCompare(ta)
+      })
+  }, [summaryMap, selectedId, articleMap])
+
+  const selectedArticle = selectedId != null ? articleMap.get(selectedId) : undefined
+  const displayMessages = [...(session?.messages ?? []), ...optimistic]
+
+  async function handleSend() {
+    const text = draft.trim()
+    if (!text || sending || selectedId == null || !selectedArticle) return
+    setOptimistic((prev) => [...prev, { role: 'user', content: text, createdAt: new Date().toISOString() }])
+    setDraft('')
+    setSending(true)
+    setStreamingText('')
+    setError(null)
+    try {
+      await window.api?.chatSend(selectedId, {
+        text,
+        provider,
+        articleText: selectedArticle.data.original ?? '',
+      })
+    } catch (e) {
+      setSending(false)
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  if (!window.api) {
+    return <p className="text-slate-500 text-sm p-6">This feature is only available in the Electron app.</p>
+  }
+
+  return (
+    <div className="h-full flex">
+      <aside className="w-[26%] max-w-xs min-w-[220px] border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-y-auto">
+        {sidebarIds.length === 0 && (
+          <p className="text-slate-500 text-xs p-4">
+            Archive에서 "Chat with this article"를 눌러 대화를 시작하세요.
+          </p>
+        )}
+        {sidebarIds.map((id) => {
+          const article = articleMap.get(id)!
+          const summary = summaryMap.get(id)
+          const isActive = id === selectedId
+          return (
+            <button
+              key={id}
+              onClick={() => openSession(id)}
+              className={`flex items-center gap-3 p-3 text-left border-b border-slate-800/60 transition-colors ${
+                isActive ? 'bg-indigo-600/20' : 'hover:bg-slate-800/60'
+              }`}
+            >
+              {article.data.thumbnail ? (
+                <img
+                  src={cachedImageSrc(article.data.thumbnail)}
+                  alt=""
+                  className="h-10 w-10 object-cover rounded-lg flex-shrink-0"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-lg bg-slate-800 flex-shrink-0" />
+              )}
+              <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                <span className="text-sm font-medium truncate">{article.data.category ?? 'Article'}</span>
+                <span className="text-xs text-slate-500 truncate">{summary?.lastMessage ?? article.url}</span>
+              </div>
+            </button>
+          )
+        })}
+      </aside>
+
+      <section className="flex-1 flex flex-col min-w-0">
+        {selectedArticle ? (
+          <>
+            <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 flex-wrap">
+              <a
+                href={selectedArticle.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-indigo-400 truncate hover:underline"
+              >
+                {selectedArticle.url}
+              </a>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as Provider)}
+                className={inputClass}
+              >
+                {PROVIDERS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+              {displayMessages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed ${
+                    m.role === 'user' ? 'self-end bg-indigo-600 text-white' : 'self-start bg-slate-800 text-slate-100'
+                  }`}
+                >
+                  {m.content}
+                </div>
+              ))}
+              {sending && (
+                <div className="self-start max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed bg-slate-800 text-slate-100">
+                  {streamingText || '...'}
+                </div>
+              )}
+              {error && (
+                <p className="self-start text-xs text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="shrink-0 p-4">
+              <div className="max-w-2xl mx-auto flex items-end gap-2 bg-slate-900 border border-slate-700 rounded-3xl px-4 py-2">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="기사에 대해 질문하세요..."
+                  rows={1}
+                  className="flex-1 bg-transparent resize-none max-h-32 py-1.5 text-sm focus:outline-none placeholder:text-slate-500"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!draft.trim() || sending}
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    draft.trim() && !sending
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      : 'bg-slate-800 text-slate-600'
+                  }`}
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-slate-500 text-sm p-6">왼쪽에서 대화를 선택하세요.</p>
+        )}
+      </section>
+    </div>
+  )
+}
