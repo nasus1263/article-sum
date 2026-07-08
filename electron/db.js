@@ -151,6 +151,7 @@ async function resetStuckJobs() {
 }
 
 module.exports = {
+  getClient,
   insertContent,
   updateContent,
   getContent,

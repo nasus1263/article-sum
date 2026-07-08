@@ -191,14 +191,12 @@ async function processLink(url) {
 
 function watchClipboard() {
   lastClipboardText = clipboard.readText().trim()
-  if (mainWindow) {
-    mainWindow.on('focus', () => {
-      const text = clipboard.readText().trim()
-      if (!text || text === lastClipboardText) return
-      lastClipboardText = text
-      if (isAuthenticated && URL_RE.test(text)) processLink(text)
-    })
-  }
+  setInterval(() => {
+    const text = clipboard.readText().trim()
+    if (!text || text === lastClipboardText) return
+    lastClipboardText = text
+    if (isAuthenticated && URL_RE.test(text)) processLink(text)
+  }, 100)
 }
 
 function registerIpcHandlers() {
@@ -213,7 +211,7 @@ function registerIpcHandlers() {
   })
   ipcMain.handle('contents:discard', async (_event, id) => {
     await db.discard(id)
-    chatStore.deleteSession(id)
+    await chatStore.deleteSession(id)
     broadcastQueueUpdate()
   })
   ipcMain.handle('contents:cancel', async (_event, id) => {
@@ -285,14 +283,14 @@ function registerIpcHandlers() {
   ipcMain.handle('chat:list', () => chatStore.listSessions())
   ipcMain.handle('chat:delete', (_event, contentId) => chatStore.deleteSession(contentId))
   ipcMain.handle('chat:send', async (_event, contentId, { text, articleText }) => {
-    chatStore.appendMessage(contentId, { role: 'user', content: text, createdAt: new Date().toISOString() })
+    await chatStore.appendMessage(contentId, { role: 'user', content: text, createdAt: new Date().toISOString() })
 
-    const session = chatStore.getSession(contentId)
+    const session = await chatStore.getSession(contentId)
     try {
       const reply = await streamChat(getBackendUrl(), articleText, session.messages, (chunk) =>
         broadcastChatEvent({ type: 'chunk', contentId, chunk })
       )
-      chatStore.appendMessage(contentId, { role: 'assistant', content: reply, createdAt: new Date().toISOString() })
+      await chatStore.appendMessage(contentId, { role: 'assistant', content: reply, createdAt: new Date().toISOString() })
       broadcastChatEvent({ type: 'done', contentId })
     } catch (e) {
       console.error('[chat:send] failed:', e)
