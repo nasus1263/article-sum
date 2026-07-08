@@ -110,6 +110,16 @@ async function listByStatus(status) {
   return data.map(rowToRecord)
 }
 
+async function getContent(id) {
+  const { data, error } = await getClient()
+    .from('contents')
+    .select('id, url, tag, status, data, created_at')
+    .eq('id', id)
+    .single()
+  if (error) throw error
+  return rowToRecord(data)
+}
+
 async function approve(id, folder) {
   const c = getClient()
   const { data: row, error: fetchError } = await c.from('contents').select('data').eq('id', id).single()
@@ -143,6 +153,7 @@ async function resetStuckJobs() {
 module.exports = {
   insertContent,
   updateContent,
+  getContent,
   getRelated,
   listByStatus,
   approve,

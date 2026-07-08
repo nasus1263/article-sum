@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   approve: (id) => ipcRenderer.invoke('contents:approve', id),
   discard: (id) => ipcRenderer.invoke('contents:discard', id),
   cancel: (id) => ipcRenderer.invoke('contents:cancel', id),
+  regenerate: (id) => ipcRenderer.invoke('contents:regenerate', id),
   getRelated: (id) => ipcRenderer.invoke('contents:related', id),
   onQueueUpdate: (callback) => {
     const listener = () => callback()

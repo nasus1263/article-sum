@@ -220,6 +220,60 @@ function registerIpcHandlers() {
     await db.discard(id)
     broadcastQueueUpdate()
   })
+  ipcMain.handle('contents:regenerate', async (_event, id) => {
+    try {
+      const record = await db.getContent(id)
+      if (!record.data || !record.data.original) {
+        throw new Error('Original article text is missing. Cannot regenerate.')
+      }
+
+      const settings = settingsStore.getSettings()
+
+      record.data.processing = true
+      record.data.stage = 'Regenerating summary...'
+      await db.updateContent(id, { data: record.data })
+      broadcastQueueUpdate()
+
+      const res = await fetch(`${getBackendUrl()}/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: record.data.original,
+          options: settings.defaultOptions,
+          categories: settings.categories,
+        }),
+      })
+
+      if (!res.ok) throw new Error(`Backend summarize failed: ${res.statusText}`)
+      const result = await res.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Summarization failed')
+      }
+
+      record.data.category = result.category
+      record.data.summaries = record.data.summaries || {}
+      record.data.summaries[computeOptionKey(settings.defaultOptions)] = result.summary
+      record.data.processing = false
+      delete record.data.stage
+      delete record.data.error
+
+      await db.updateContent(id, { data: record.data })
+      broadcastQueueUpdate()
+    } catch (e) {
+      console.error('[contents:regenerate] failed:', e)
+      try {
+        const record = await db.getContent(id)
+        record.data.processing = false
+        delete record.data.stage
+        record.data.error = e instanceof Error ? e.message : String(e)
+        await db.updateContent(id, { data: record.data })
+        broadcastQueueUpdate()
+      } catch (innerErr) {
+        console.error('[contents:regenerate] error fallback failed:', innerErr)
+      }
+    }
+  })
 
   ipcMain.handle('auth:signUp', (_event, email, password) => db.signUp(email, password))
   ipcMain.handle('auth:signIn', (_event, email, password) => db.signIn(email, password))

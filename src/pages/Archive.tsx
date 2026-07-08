@@ -28,6 +28,11 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
     refresh()
   }
 
+  async function handleRegenerate(id: number) {
+    await window.api?.regenerate(id)
+    refresh()
+  }
+
   function toggleExpanded(id: number) {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -253,6 +258,17 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                   </div>
                 )}
                 <div className="flex justify-end gap-2">
+                  {r.data.original && !r.data.processing && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRegenerate(r.id)
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1.5 font-medium"
+                    >
+                      Regenerate
+                    </button>
+                  )}
                   {r.data.original && (
                     <button
                       onClick={(e) => {

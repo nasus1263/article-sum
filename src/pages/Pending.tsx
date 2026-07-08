@@ -37,6 +37,11 @@ export default function Pending() {
     refresh()
   }
 
+  async function handleRegenerate(id: number) {
+    await window.api?.regenerate(id)
+    refresh()
+  }
+
   if (!window.api) {
     return <p className="text-slate-500 text-sm">This feature is only available in the Electron app.</p>
   }
@@ -110,6 +115,14 @@ export default function Pending() {
                   className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5"
                 >
                   Show full article
+                </button>
+              )}
+              {r.data.original && !r.data.processing && (
+                <button
+                  onClick={() => handleRegenerate(r.id)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1.5"
+                >
+                  Regenerate
                 </button>
               )}
               {r.data.processing ? (
