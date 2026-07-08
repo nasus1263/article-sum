@@ -155,6 +155,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle('chat:get', (_event, contentId) => chatStore.getSession(contentId))
   ipcMain.handle('chat:list', () => chatStore.listSessions())
+  ipcMain.handle('chat:delete', (_event, contentId) => chatStore.deleteSession(contentId))
   ipcMain.handle('chat:send', async (_event, contentId, { text, provider, articleText }) => {
     chatStore.appendMessage(contentId, { role: 'user', content: text, createdAt: new Date().toISOString() })
     chatStore.setProvider(contentId, provider)

@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import type { ChatMessage, ChatSession, ChatSessionSummary, ContentRecord } from '../types/global'
 import type { Provider } from '../types'
 import { PROVIDERS } from '../types'
@@ -7,6 +10,43 @@ import { cachedImageSrc } from '../utils/imageCache'
 
 const inputClass =
   'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+
+const markdownComponents: Components = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="underline text-indigo-300 hover:text-indigo-200">
+      {children}
+    </a>
+  ),
+  ul: ({ children }) => <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-0.5">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 last:mb-0 space-y-0.5">{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  h1: ({ children }) => <p className="font-semibold text-base mb-1">{children}</p>,
+  h2: ({ children }) => <p className="font-semibold text-base mb-1">{children}</p>,
+  h3: ({ children }) => <p className="font-semibold mb-1">{children}</p>,
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-slate-500 pl-2 italic text-slate-300 mb-2 last:mb-0">{children}</blockquote>
+  ),
+  pre: ({ children }) => (
+    <pre className="bg-black/30 rounded-lg p-2 overflow-x-auto text-xs font-mono mb-2 last:mb-0">{children}</pre>
+  ),
+  code: ({ className, children, ...rest }) => {
+    const isInline = !className && !String(children).includes('\n')
+    if (isInline) {
+      return (
+        <code className="bg-black/30 rounded px-1 py-0.5 text-xs font-mono" {...rest}>
+          {children}
+        </code>
+      )
+    }
+    return (
+      <code className={className} {...rest}>
+        {children}
+      </code>
+    )
+  },
+}
 
 export default function Chat({ initialContentId }: { initialContentId: number | null }) {
   const [articles, setArticles] = useState<ContentRecord[] | null>(null)
@@ -19,6 +59,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [provider, setProvider] = useState<Provider>('claude')
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const { defaults } = usePipelineDefaults()
 
   const selectedIdRef = useRef(selectedId)
@@ -121,6 +162,17 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
     }
   }
 
+  async function handleDeleteSession(id: number) {
+    setOpenMenuId(null)
+    if (!window.confirm('이 대화를 삭제하시겠습니까?')) return
+    await window.api?.chatDeleteSession(id)
+    refreshSessionList()
+    if (selectedId === id) {
+      setSelectedId(null)
+      setSession(null)
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -145,27 +197,50 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
           const summary = summaryMap.get(id)
           const isActive = id === selectedId
           return (
-            <button
+            <div
               key={id}
-              onClick={() => openSession(id)}
-              className={`flex items-center gap-3 p-3 text-left border-b border-slate-800/60 transition-colors ${
+              className={`relative flex items-center gap-1 border-b border-slate-800/60 transition-colors ${
                 isActive ? 'bg-indigo-600/20' : 'hover:bg-slate-800/60'
               }`}
             >
-              {article.data.thumbnail ? (
-                <img
-                  src={cachedImageSrc(article.data.thumbnail)}
-                  alt=""
-                  className="h-10 w-10 object-cover rounded-lg flex-shrink-0"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-lg bg-slate-800 flex-shrink-0" />
+              <button onClick={() => openSession(id)} className="flex items-center gap-3 p-3 text-left flex-1 min-w-0">
+                {article.data.thumbnail ? (
+                  <img
+                    src={cachedImageSrc(article.data.thumbnail)}
+                    alt=""
+                    className="h-10 w-10 object-cover rounded-lg flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-slate-800 flex-shrink-0" />
+                )}
+                <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                  <span className="text-sm font-medium truncate">{article.data.category ?? 'Article'}</span>
+                  <span className="text-xs text-slate-500 truncate">{summary?.lastMessage ?? article.url}</span>
+                </div>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setOpenMenuId((prev) => (prev === id ? null : id))
+                }}
+                className="text-slate-500 hover:text-slate-200 px-2 py-1 text-sm flex-shrink-0 mr-1"
+              >
+                ⋯
+              </button>
+              {openMenuId === id && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                  <div className="absolute right-2 top-10 z-20 bg-slate-800 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
+                    <button
+                      onClick={() => handleDeleteSession(id)}
+                      className="block w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-700 whitespace-nowrap"
+                    >
+                      대화 삭제
+                    </button>
+                  </div>
+                </>
               )}
-              <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-                <span className="text-sm font-medium truncate">{article.data.category ?? 'Article'}</span>
-                <span className="text-xs text-slate-500 truncate">{summary?.lastMessage ?? article.url}</span>
-              </div>
-            </button>
+            </div>
           )
         })}
       </aside>
@@ -199,16 +274,24 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
               {displayMessages.map((m, i) => (
                 <div
                   key={i}
-                  className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed ${
+                  className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${
                     m.role === 'user' ? 'self-end bg-indigo-600 text-white' : 'self-start bg-slate-800 text-slate-100'
                   }`}
                 >
-                  {m.content}
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+                    {m.content}
+                  </ReactMarkdown>
                 </div>
               ))}
               {sending && (
-                <div className="self-start max-w-[75%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap leading-relaxed bg-slate-800 text-slate-100">
-                  {streamingText || '...'}
+                <div className="self-start max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed bg-slate-800 text-slate-100">
+                  {streamingText ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+                      {streamingText}
+                    </ReactMarkdown>
+                  ) : (
+                    '...'
+                  )}
                 </div>
               )}
               {error && (

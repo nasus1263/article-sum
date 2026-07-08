@@ -11,7 +11,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
-  const [fullTextIds, setFullTextIds] = useState<Set<number>>(new Set())
+  const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
 
   function refresh() {
     window.api?.listApproved().then(setRecords)
@@ -29,16 +29,6 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
 
   function toggleExpanded(id: number) {
     setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function toggleFullText(id: number) {
-    setExpanded((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
-    setFullTextIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -153,7 +143,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                           <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
                         )}
                       </div>
-                      {summary && <p className="text-xs text-slate-400 truncate">{summary}</p>}
+                      {summary && <p className="text-xs text-slate-400 whitespace-pre-wrap">{summary}</p>}
                     </div>
                     <span className="text-slate-600 text-xs flex-shrink-0">▸</span>
                   </div>
@@ -168,10 +158,10 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                     )}
                     {r.data.original && (
                       <button
-                        onClick={() => toggleFullText(r.id)}
+                        onClick={() => setFullTextRecord(r)}
                         className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-2 py-1 font-medium whitespace-nowrap"
                       >
-                        {fullTextIds.has(r.id) ? '전문 숨기기' : '전문 보기'}
+                        전문 보기
                       </button>
                     )}
                     <a
@@ -210,9 +200,6 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                   <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
                 )}
                 {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
-                {fullTextIds.has(r.id) && r.data.original && (
-                  <p className="whitespace-pre-wrap text-slate-400 text-sm leading-relaxed">{r.data.original}</p>
-                )}
                 <div className="flex justify-end gap-2">
                   {r.data.original && (
                     <button
@@ -229,11 +216,11 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        toggleFullText(r.id)
+                        setFullTextRecord(r)
                       }}
                       className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 font-medium"
                     >
-                      {fullTextIds.has(r.id) ? '전문 숨기기' : '전문 보기'}
+                      전문 보기
                     </button>
                   )}
                   <a
@@ -260,6 +247,31 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
           })}
         </section>
       ))}
+
+      {fullTextRecord && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
+          onClick={() => setFullTextRecord(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 max-w-2xl w-full max-h-[80vh]"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 break-all flex-1">{fullTextRecord.url}</span>
+              <button
+                onClick={() => setFullTextRecord(null)}
+                className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 flex-shrink-0"
+              >
+                닫기
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed overflow-y-auto">
+              {fullTextRecord.data.original}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   chatGetSession: (contentId) => ipcRenderer.invoke('chat:get', contentId),
   chatListSessions: () => ipcRenderer.invoke('chat:list'),
+  chatDeleteSession: (contentId) => ipcRenderer.invoke('chat:delete', contentId),
   chatSend: (contentId, payload) => ipcRenderer.invoke('chat:send', contentId, payload),
   onChatEvent: (callback) => {
     const listener = (_event, payload) => callback(payload)

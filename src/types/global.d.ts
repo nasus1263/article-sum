@@ -65,6 +65,7 @@ export interface ElectronApi {
   onQueueUpdate: (callback: () => void) => () => void
   chatGetSession: (contentId: number) => Promise<ChatSession>
   chatListSessions: () => Promise<ChatSessionSummary[]>
+  chatDeleteSession: (contentId: number) => Promise<void>
   chatSend: (contentId: number, payload: { text: string; provider: Provider; articleText: string }) => Promise<void>
   onChatEvent: (callback: (event: ChatEvent) => void) => () => void
 }
