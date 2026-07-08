@@ -29,7 +29,7 @@ export default function Login() {
   return (
     <div className="h-full flex items-center justify-center p-6">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-slate-900/50 border border-slate-800 rounded-xl p-6 flex flex-col gap-4">
-        <h1 className="text-xl font-bold text-center">Sign in</h1>
+        <h1 className="text-xl font-bold text-center">{mode === 'signIn' ? 'Sign in' : 'Sign up'}</h1>
         <div className="flex flex-col gap-2">
           <label className="text-xs text-slate-500">Email</label>
           <input
