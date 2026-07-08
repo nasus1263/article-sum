@@ -132,29 +132,32 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                 <section
                   key={r.id}
                   onClick={() => toggleExpanded(r.id)}
-                  className={`${cardClass} h-[100px] flex-row items-center gap-3 p-2 cursor-pointer hover:border-slate-600 hover:bg-slate-900/80 transition-colors`}
+                  className={`${cardClass} p-2 cursor-pointer hover:border-slate-600 hover:bg-slate-900/80 transition-colors`}
                 >
-                  {r.data.thumbnail ? (
-                    <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="h-full w-[84px] object-cover rounded-lg flex-shrink-0" />
-                  ) : (
-                    <div className="h-full w-[84px] rounded-lg bg-slate-800 flex-shrink-0" />
-                  )}
-                  <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
-                          r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
-                        }`}
-                      >
-                        {r.tag}
-                      </span>
-                      {r.data.category && (
-                        <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
-                      )}
+                  <div className="flex flex-row items-center gap-3">
+                    {r.data.thumbnail ? (
+                      <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="h-16 w-16 object-cover rounded-lg flex-shrink-0" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-lg bg-slate-800 flex-shrink-0" />
+                    )}
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
+                            r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
+                          }`}
+                        >
+                          {r.tag}
+                        </span>
+                        {r.data.category && (
+                          <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
+                        )}
+                      </div>
+                      {summary && <p className="text-xs text-slate-400 truncate">{summary}</p>}
                     </div>
-                    {summary && <p className="text-xs text-slate-400 truncate">{summary}</p>}
+                    <span className="text-slate-600 text-xs flex-shrink-0">▸</span>
                   </div>
-                  <div className="flex flex-col gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-row justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                     {r.data.original && (
                       <button
                         onClick={() => onChatWithArticle(r.id)}
@@ -180,7 +183,6 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                       웹에서 보기
                     </a>
                   </div>
-                  <span className="text-slate-600 text-xs flex-shrink-0">▸</span>
                 </section>
               )
             }
