@@ -8,7 +8,7 @@ const inputClass =
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 
 export default function Settings() {
-  const { defaults, updateCategories, updateDefaultOptions } = usePipelineDefaults()
+  const { defaults, updateBackendUrl, updateCategories, updateDefaultOptions } = usePipelineDefaults()
   const [newCategory, setNewCategory] = useState('')
 
   function handleOptionsChange(o: SummaryOptions) {
@@ -40,6 +40,19 @@ export default function Settings() {
 
       {defaults && (
         <div className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold text-slate-200">Backend Configuration</h2>
+          <div className={cardClass}>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-slate-500">Backend URL & Port</label>
+              <input
+                value={defaults.backendUrl}
+                onChange={(e) => updateBackendUrl(e.target.value)}
+                placeholder="http://127.0.0.1:3000"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
           <h2 className="text-lg font-semibold text-slate-200">Pipeline defaults</h2>
           <section className={`${cardClass} flex-row flex-wrap items-center gap-x-6 gap-y-3`}>
             <label className="flex items-center gap-2 text-sm text-slate-300">

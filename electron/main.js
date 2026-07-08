@@ -7,9 +7,17 @@ const chatStore = require('./chatStore')
 const imageCache = require('./imageCache')
 const { streamChat } = require('./llm')
 
-const BACKEND_PORT = 3000
-const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
+
+function getBackendUrl() {
+  return settingsStore.getSettings().backendUrl || 'http://127.0.0.1:3000'
+}
+
+function getBackendPort() {
+  const url = getBackendUrl()
+  const match = url.match(/:(\d+)/)
+  return match ? parseInt(match[1], 10) : 3000
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -82,7 +90,8 @@ function computeOptionKey(options) {
 
 function startBackend() {
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3'
-  sidecarProcess = spawn(pythonBin, ['-m', 'uvicorn', 'main:app', '--port', String(BACKEND_PORT)], {
+  const port = getBackendPort()
+  sidecarProcess = spawn(pythonBin, ['-m', 'uvicorn', 'main:app', '--port', String(port)], {
     cwd: path.join(__dirname, '..', '..', 'article-sum-back'),
     stdio: 'ignore',
   })
@@ -130,7 +139,7 @@ async function processLink(url) {
 
     setOverlayText('✨ Summarizing article...').catch((e) => console.error('[overlay] update failed:', e))
 
-    const res = await fetch(`${BACKEND_URL}/process`, {
+    const res = await fetch(`${getBackendUrl()}/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -225,7 +234,7 @@ function registerIpcHandlers() {
 
     const session = chatStore.getSession(contentId)
     try {
-      const reply = await streamChat(BACKEND_URL, articleText, session.messages, (chunk) =>
+      const reply = await streamChat(getBackendUrl(), articleText, session.messages, (chunk) =>
         broadcastChatEvent({ type: 'chunk', contentId, chunk })
       )
       chatStore.appendMessage(contentId, { role: 'assistant', content: reply, createdAt: new Date().toISOString() })

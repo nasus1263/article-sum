@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SummaryOptions } from '../types'
 
 interface PipelineDefaults {
+  backendUrl: string
   defaultOptions: SummaryOptions
   categories: string[]
   activeFolder: string | null
@@ -13,12 +14,18 @@ export function usePipelineDefaults() {
   useEffect(() => {
     window.api?.getSettings().then((s) =>
       setDefaults({
+        backendUrl: s.backendUrl,
         defaultOptions: s.defaultOptions,
         categories: s.categories,
         activeFolder: s.activeFolder,
       })
     )
   }, [])
+
+  function updateBackendUrl(backendUrl: string) {
+    setDefaults((prev) => (prev ? { ...prev, backendUrl } : prev))
+    window.api?.syncSettings({ backendUrl })
+  }
 
   function updateDefaultOptions(defaultOptions: SummaryOptions) {
     setDefaults((prev) => (prev ? { ...prev, defaultOptions } : prev))
@@ -35,6 +42,6 @@ export function usePipelineDefaults() {
     window.api?.syncSettings({ activeFolder })
   }
 
-  return { defaults, updateDefaultOptions, updateCategories, updateActiveFolder }
+  return { defaults, updateBackendUrl, updateDefaultOptions, updateCategories, updateActiveFolder }
 }
 

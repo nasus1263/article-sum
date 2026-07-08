@@ -3,7 +3,7 @@ const path = require('path')
 const { app } = require('electron')
 
 const DEFAULT_SETTINGS = {
-  apiKeys: { openai: '' },
+  backendUrl: 'http://127.0.0.1:3000',
   defaultOptions: { emoji: true, kidFriendly: false, language: 'ko' },
   categories: ['Politics', 'Economy', 'Society', 'Culture', 'Entertainment', 'Sports', 'IT'],
   activeFolder: null,
@@ -24,7 +24,6 @@ function getSettings() {
     cache = {
       ...DEFAULT_SETTINGS,
       ...raw,
-      apiKeys: { ...DEFAULT_SETTINGS.apiKeys, ...raw.apiKeys },
       defaultOptions: { ...DEFAULT_SETTINGS.defaultOptions, ...raw.defaultOptions },
     }
   } else {
@@ -38,7 +37,6 @@ function updateSettings(partial) {
   cache = {
     ...current,
     ...partial,
-    apiKeys: { ...current.apiKeys, ...partial.apiKeys },
     defaultOptions: { ...current.defaultOptions, ...partial.defaultOptions },
   }
   fs.writeFileSync(settingsPath(), JSON.stringify(cache, null, 2))

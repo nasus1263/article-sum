@@ -32,6 +32,7 @@ export interface ChatEvent {
 }
 
 export interface PipelineSettings {
+  backendUrl: string
   defaultOptions: SummaryOptions
   categories: string[]
   activeFolder: string | null
