@@ -7,11 +7,10 @@ const chatStore = require('./chatStore')
 const imageCache = require('./imageCache')
 const { streamChat } = require('./llm')
 
-const BACKEND_PORT = 9000
+const BACKEND_PORT = 3000
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
-
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -75,7 +74,12 @@ function hideOverlayJob() {
   if (overlayJobCount === 0) overlayWindow?.hide()
 }
 
-
+function computeOptionKey(options) {
+  const parts = []
+  if (options.emoji) parts.push('emoji')
+  if (options.kidFriendly) parts.push('child')
+  return parts.length ? parts.join('_') : 'default'
+}
 
 function startBackend() {
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3'
@@ -85,8 +89,6 @@ function startBackend() {
   })
   sidecarProcess.on('error', (e) => console.error('[backend] failed to start:', e))
 }
-
-
 
 function broadcastQueueUpdate() {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -107,9 +109,28 @@ function broadcastAuthChange(user) {
 }
 
 async function processLink(url) {
+  const data = { processing: true, stage: 'Fetching article...' }
+  let id
+  try {
+    id = await db.insertContent({ url, tag: 'Article', data })
+  } catch (e) {
+    console.error('[processLink] insertContent failed:', e)
+    return
+  }
+  broadcastQueueUpdate()
+
+  const controller = new AbortController()
+  activeJobs.set(id, controller)
+  let tag = 'Article'
+  let embedding
+
   showOverlay('✨ Analyzing link...')
+
   try {
     const settings = settingsStore.getSettings()
+
+    setOverlayText('✨ Summarizing article...').catch((e) => console.error('[overlay] update failed:', e))
+
     const res = await fetch(`${BACKEND_URL}/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,15 +139,44 @@ async function processLink(url) {
         options: settings.defaultOptions,
         categories: settings.categories,
       }),
+      signal: AbortSignal.any([AbortSignal.timeout(60_000), controller.signal]),
     })
-    if (!res.ok) {
-      console.error('[processLink] backend call failed:', res.statusText)
+
+    if (!res.ok) throw new Error(`Backend process failed: ${res.statusText}`)
+    const result = await res.json()
+
+    if (controller.signal.aborted) return
+
+    if (!result.success || !result.text) {
+      tag = 'Not Article'
+      return
     }
-    broadcastQueueUpdate()
+
+    data.original = result.text
+    data.thumbnail = result.image ?? null
+    data.title = result.title ?? null
+    data.summaries = {}
+    if (result.error) {
+      data.error = result.error
+    } else {
+      data.category = result.category
+      data.summaries[computeOptionKey(settings.defaultOptions)] = result.summary
+    }
+
+    // OpenAI provider가 제거되어 임베딩 키가 없으므로 임베딩 생성 시도를 생략함
   } catch (e) {
+    if (controller.signal.aborted) return
     console.error('[processLink] failed:', e)
+    data.error = e instanceof Error ? e.message : String(e)
   } finally {
     hideOverlayJob()
+    if (!controller.signal.aborted) {
+      data.processing = false
+      delete data.stage
+      await db.updateContent(id, { tag, data, embedding })
+      broadcastQueueUpdate()
+    }
+    activeJobs.delete(id)
   }
 }
 
@@ -221,10 +271,6 @@ app.whenReady().then(async () => {
   await db.resetStuckJobs().catch((e) => console.error('[db] resetStuckJobs failed:', e.message))
   createWindow()
   watchClipboard()
-
-  // setTimeout(()=>{
-  // processLink(`https://www.koreaherald.com/article/10802438`)
-  // }, 5000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
