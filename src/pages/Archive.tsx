@@ -127,10 +127,10 @@ export default function Archive({
               >
                   <div className="flex flex-row items-center gap-3">
                     {r.data.images?.[0] ? (
-                      <div className="relative h-16 w-16 flex-shrink-0">
+                      <div className="relative isolate h-16 w-16 flex-shrink-0">
                         {r.data.images.length > 1 && (
                           <>
-                            <div className="absolute inset-0 rotate-[-10deg] rounded-lg bg-slate-800 border border-slate-700 -z-20" />
+                            <div className="absolute inset-0 rotate-[20deg] rounded-lg bg-slate-800 border border-slate-700 -z-20" />
                             <div className="absolute inset-0 rotate-[10deg] rounded-lg bg-slate-800 border border-slate-700 -z-10" />
                           </>
                         )}
