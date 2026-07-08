@@ -3,13 +3,7 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import type { ChatMessage, ChatSession, ChatSessionSummary, ContentRecord } from '../types/global'
-import type { Provider } from '../types'
-import { PROVIDERS } from '../types'
-import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
 import { cachedImageSrc } from '../utils/imageCache'
-
-const inputClass =
-  'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
 const markdownComponents: Components = {
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -58,9 +52,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [provider, setProvider] = useState<Provider>('claude')
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
-  const { defaults } = usePipelineDefaults()
 
   const selectedIdRef = useRef(selectedId)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -113,9 +105,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialContentId])
 
-  useEffect(() => {
-    setProvider(session?.provider ?? defaults?.defaultProvider ?? 'claude')
-  }, [session, defaults])
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: 'end' })
@@ -153,7 +143,6 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
     try {
       await window.api?.chatSend(selectedId, {
         text,
-        provider,
         articleText: selectedArticle.data.original ?? '',
       })
     } catch (e) {
@@ -262,17 +251,6 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
                   {selectedArticle.url}
                 </a>
               </div>
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as Provider)}
-                className={inputClass}
-              >
-                {PROVIDERS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">

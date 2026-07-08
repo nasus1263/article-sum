@@ -1,20 +1,14 @@
 import { useState } from 'react'
-import { LANGUAGES, PROVIDERS } from '../types'
-import type { Provider, SummaryOptions } from '../types'
-import { useApiKeys } from '../hooks/useApiKeys'
-import { useModels } from '../hooks/useModels'
+import { LANGUAGES } from '../types'
+import type { SummaryOptions } from '../types'
 import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
-import { useSupabaseConfig } from '../hooks/useSupabaseConfig'
 
 const inputClass =
   'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 
 export default function Settings() {
-  const { keys, updateKey } = useApiKeys()
-  const { models, updateModel } = useModels()
-  const { defaults, updateCategories, updateDefaultProvider, updateDefaultOptions } = usePipelineDefaults()
-  const { config: supabaseConfig, updateConfig: updateSupabaseConfig } = useSupabaseConfig()
+  const { defaults, updateCategories, updateDefaultOptions } = usePipelineDefaults()
   const [newCategory, setNewCategory] = useState('')
 
   function handleOptionsChange(o: SummaryOptions) {
@@ -82,20 +76,6 @@ export default function Settings() {
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300 ml-auto">
-              Provider
-              <select
-                value={defaults.defaultProvider}
-                onChange={(e) => updateDefaultProvider(e.target.value as Provider)}
-                className={inputClass}
-              >
-                {PROVIDERS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
           </section>
 
           <h2 className="text-lg font-semibold text-slate-200">Categories</h2>
@@ -132,58 +112,7 @@ export default function Settings() {
           </div>
         </div>
       )}
-
-      {supabaseConfig && (
-        <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-slate-200">Database (Supabase)</h2>
-          <div className={cardClass}>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs text-slate-500">Project URL</label>
-              <input
-                value={supabaseConfig.url}
-                onChange={(e) => updateSupabaseConfig({ url: e.target.value })}
-                placeholder="https://xxxxx.supabase.co"
-                className={inputClass}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs text-slate-500">Anon key</label>
-              <input
-                type="password"
-                value={supabaseConfig.anonKey}
-                onChange={(e) => updateSupabaseConfig({ anonKey: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4">
-        {PROVIDERS.map((p) => (
-          <div key={p.id} className={cardClass}>
-            <span className="text-sm font-medium text-slate-300">{p.label}</span>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs text-slate-500">API Key</label>
-              <input
-                type="password"
-                placeholder={`${p.label} API Key`}
-                value={keys[p.id]}
-                onChange={(e) => updateKey(p.id, e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs text-slate-500">Model name</label>
-              <input
-                value={models[p.id]}
-                onChange={(e) => updateModel(p.id, e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
+

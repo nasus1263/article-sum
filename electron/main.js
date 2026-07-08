@@ -5,15 +5,13 @@ const settingsStore = require('./settingsStore')
 const db = require('./db')
 const chatStore = require('./chatStore')
 const imageCache = require('./imageCache')
-const { summarizeArticle, streamChat, embedText } = require('./llm')
+const { streamChat } = require('./llm')
 
-const SIDECAR_PORT = 8787
-const SIDECAR_URL = `http://127.0.0.1:${SIDECAR_PORT}`
+const BACKEND_PORT = 3000
+const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
-const SIDECAR_RETRY_DELAY_MS = 5000
-const SIDECAR_MAX_RETRIES = 5
-const EMBED_TRUNCATE_CHARS = 6000
+
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -77,52 +75,18 @@ function hideOverlayJob() {
   if (overlayJobCount === 0) overlayWindow?.hide()
 }
 
-function computeOptionKey(options) {
-  const parts = []
-  if (options.emoji) parts.push('emoji')
-  if (options.kidFriendly) parts.push('child')
-  return parts.length ? parts.join('_') : 'default'
-}
 
-function startSidecar() {
+
+function startBackend() {
   const pythonBin = process.platform === 'win32' ? 'python' : 'python3'
-  sidecarProcess = spawn(pythonBin, ['-m', 'uvicorn', 'main:app', '--port', String(SIDECAR_PORT)], {
-    cwd: path.join(__dirname, '..', 'python-sidecar'),
+  sidecarProcess = spawn(pythonBin, ['-m', 'uvicorn', 'main:app', '--port', String(BACKEND_PORT)], {
+    cwd: path.join(__dirname, '..', '..', 'article-sum-back'),
     stdio: 'ignore',
   })
-  sidecarProcess.on('error', (e) => console.error('[sidecar] failed to start:', e))
+  sidecarProcess.on('error', (e) => console.error('[backend] failed to start:', e))
 }
 
-async function crawl(url, signal) {
-  try {
-    const res = await fetch(`${SIDECAR_URL}/crawl`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-      signal: AbortSignal.any([AbortSignal.timeout(30_000), signal]),
-    })
-    if (!res.ok) return { success: false, text: null }
-    return await res.json()
-  } catch (e) {
-    console.error('[crawl] sidecar unreachable:', e)
-    // 앱 시작 직후에는 python sidecar 가 아직 뜨는 중이라 ECONNREFUSED 가 날 수 있다.
-    // 이 경우만 별도 표시해서 processLink 에서 잠깐 재시도하게 한다.
-    const unreachable = e?.cause?.code === 'ECONNREFUSED'
-    return { success: false, text: null, unreachable }
-  }
-}
 
-async function crawlWithRetry(url, signal) {
-  let result = await crawl(url, signal)
-  let attempt = 0
-  while (result.unreachable && attempt < SIDECAR_MAX_RETRIES && !signal.aborted) {
-    await new Promise((resolve) => setTimeout(resolve, SIDECAR_RETRY_DELAY_MS))
-    if (signal.aborted) break
-    attempt++
-    result = await crawl(url, signal)
-  }
-  return result
-}
 
 function broadcastQueueUpdate() {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -143,77 +107,26 @@ function broadcastAuthChange(user) {
 }
 
 async function processLink(url) {
-  const data = { processing: true, stage: 'Fetching article...' }
-  let id
-  try {
-    id = await db.insertContent({ url, tag: 'Article', data })
-  } catch (e) {
-    console.error('[processLink] insertContent failed:', e)
-    return
-  }
-  broadcastQueueUpdate()
-
-  const controller = new AbortController()
-  activeJobs.set(id, controller)
-  let tag = 'Article'
-  let embedding
-
   showOverlay('✨ Analyzing link...')
-
   try {
-    const { success, text, image, title } = await crawlWithRetry(url, controller.signal)
-    if (controller.signal.aborted) return
-
-    if (!success || !text) {
-      tag = 'Not Article'
-      return
-    }
-
-    data.original = text
-    data.thumbnail = image ?? null
-    data.title = title ?? null
-    data.summaries = {}
-    data.stage = 'Summarizing...'
-    await db.updateContent(id, { data })
-    broadcastQueueUpdate()
-
     const settings = settingsStore.getSettings()
-
-    try {
-      const openaiKey = settings.apiKeys.openai
-      if (!openaiKey) throw new Error('OpenAI API key is missing (required for embeddings)')
-      embedding = await embedText(text.slice(0, EMBED_TRUNCATE_CHARS), openaiKey, controller.signal)
-    } catch (e) {
-      console.error('[processLink] embedding failed:', e)
-      data.embeddingError = e instanceof Error ? e.message : String(e)
+    const res = await fetch(`${BACKEND_URL}/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        options: settings.defaultOptions,
+        categories: settings.categories,
+      }),
+    })
+    if (!res.ok) {
+      console.error('[processLink] backend call failed:', res.statusText)
     }
-
-    setOverlayText('✨ Summarizing article...').catch((e) => console.error('[overlay] update failed:', e))
-
-    const { category, summary } = await summarizeArticle(
-      text,
-      settings.defaultOptions,
-      settings.defaultProvider,
-      settings.models[settings.defaultProvider],
-      settings.apiKeys,
-      controller.signal,
-      settings.categories
-    )
-    data.category = category
-    data.summaries[computeOptionKey(settings.defaultOptions)] = summary
+    broadcastQueueUpdate()
   } catch (e) {
-    if (controller.signal.aborted) return
     console.error('[processLink] failed:', e)
-    data.error = e instanceof Error ? e.message : String(e)
   } finally {
     hideOverlayJob()
-    if (!controller.signal.aborted) {
-      data.processing = false
-      delete data.stage
-      await db.updateContent(id, { tag, data, embedding })
-      broadcastQueueUpdate()
-    }
-    activeJobs.delete(id)
   }
 }
 
@@ -256,20 +169,13 @@ function registerIpcHandlers() {
   ipcMain.handle('chat:get', (_event, contentId) => chatStore.getSession(contentId))
   ipcMain.handle('chat:list', () => chatStore.listSessions())
   ipcMain.handle('chat:delete', (_event, contentId) => chatStore.deleteSession(contentId))
-  ipcMain.handle('chat:send', async (_event, contentId, { text, provider, articleText }) => {
+  ipcMain.handle('chat:send', async (_event, contentId, { text, articleText }) => {
     chatStore.appendMessage(contentId, { role: 'user', content: text, createdAt: new Date().toISOString() })
-    chatStore.setProvider(contentId, provider)
 
-    const settings = settingsStore.getSettings()
     const session = chatStore.getSession(contentId)
     try {
-      const reply = await streamChat(
-        provider,
-        articleText,
-        session.messages,
-        settings.models[provider],
-        settings.apiKeys,
-        (chunk) => broadcastChatEvent({ type: 'chunk', contentId, chunk })
+      const reply = await streamChat(BACKEND_URL, articleText, session.messages, (chunk) =>
+        broadcastChatEvent({ type: 'chunk', contentId, chunk })
       )
       chatStore.appendMessage(contentId, { role: 'assistant', content: reply, createdAt: new Date().toISOString() })
       broadcastChatEvent({ type: 'done', contentId })
@@ -303,7 +209,7 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   protocol.handle('appimg', imageCache.fetchImage)
   registerIpcHandlers()
-  startSidecar()
+  startBackend()
   try {
     db.onAuthStateChange((user) => {
       isAuthenticated = !!user

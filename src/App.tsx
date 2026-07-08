@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Pending from './pages/Pending'
 import Archive from './pages/Archive'
 import Settings from './pages/Settings'
 import Chat from './pages/Chat'
 import Login from './pages/Login'
-import { useApiKeys } from './hooks/useApiKeys'
-import { useModels } from './hooks/useModels'
 import { useAuth } from './hooks/useAuth'
 
 type Page = 'pending' | 'archive' | 'chat' | 'settings'
@@ -20,20 +18,13 @@ const TABS: { id: Page; label: string }[] = [
 export default function App() {
   const [page, setPage] = useState<Page>('pending')
   const [chatTarget, setChatTarget] = useState<number | null>(null)
-  const { keys } = useApiKeys()
-  const { models } = useModels()
   const { user, loading, signOut } = useAuth()
-
-  // Electron 메인 프로세스는 클립보드 파이프라인에서 같은 API 키/모델을 쓴다.
-  // 렌더러 localStorage 값이 바뀔 때마다 main으로 동기화.
-  useEffect(() => {
-    window.api?.syncSettings({ apiKeys: keys, models })
-  }, [keys, models])
 
   function handleChatWithArticle(contentId: number) {
     setChatTarget(contentId)
     setPage('chat')
   }
+
 
   if (loading) return null
 

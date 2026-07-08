@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js')
 const settingsStore = require('./settingsStore')
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = require('./config')
 
 let client = null
-let clientKey = null
 
 // Main process has no localStorage, so the auth session (refresh token) is
 // persisted through settingsStore instead — same plaintext handling as the anon key.
@@ -21,16 +21,10 @@ const authStorageAdapter = {
 }
 
 function getClient() {
-  const { supabase } = settingsStore.getSettings()
-  if (!supabase?.url || !supabase?.anonKey) {
-    throw new Error('Supabase is not configured. Set the project URL and anon key in Settings.')
-  }
-  const key = `${supabase.url}|${supabase.anonKey}`
-  if (!client || clientKey !== key) {
-    client = createClient(supabase.url, supabase.anonKey, {
+  if (!client) {
+    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { storage: authStorageAdapter, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
     })
-    clientKey = key
   }
   return client
 }

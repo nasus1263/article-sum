@@ -1,4 +1,4 @@
-import type { ApiKeys, Models, Provider, SummaryOptions } from './index'
+import type { Provider, SummaryOptions } from './index'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -32,13 +32,9 @@ export interface ChatEvent {
 }
 
 export interface PipelineSettings {
-  apiKeys: ApiKeys
-  models: Models
-  defaultProvider: Provider
   defaultOptions: SummaryOptions
   categories: string[]
   activeFolder: string | null
-  supabase: { url: string; anonKey: string }
 }
 
 export interface ContentRecord {
@@ -79,7 +75,7 @@ export interface ElectronApi {
   chatGetSession: (contentId: number) => Promise<ChatSession>
   chatListSessions: () => Promise<ChatSessionSummary[]>
   chatDeleteSession: (contentId: number) => Promise<void>
-  chatSend: (contentId: number, payload: { text: string; provider: Provider; articleText: string }) => Promise<void>
+  chatSend: (contentId: number, payload: { text: string; articleText: string }) => Promise<void>
   onChatEvent: (callback: (event: ChatEvent) => void) => () => void
 }
 
