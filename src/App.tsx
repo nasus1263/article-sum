@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import Pending from './pages/Pending'
 import Archive from './pages/Archive'
+import ArchiveDetail from './pages/ArchiveDetail'
 import Settings from './pages/Settings'
 import Chat from './pages/Chat'
 import Login from './pages/Login'
 import { useAuth } from './hooks/useAuth'
+import type { ContentRecord } from './types/global'
 
-type Page = 'pending' | 'archive' | 'chat' | 'settings'
+type Page = 'pending' | 'archive' | 'archive-detail' | 'chat' | 'settings'
 
 const TABS: { id: Page; label: string }[] = [
   { id: 'pending', label: 'Pending Approval' },
@@ -18,11 +20,17 @@ const TABS: { id: Page; label: string }[] = [
 export default function App() {
   const [page, setPage] = useState<Page>('pending')
   const [chatTarget, setChatTarget] = useState<number | null>(null)
+  const [archiveDetail, setArchiveDetail] = useState<ContentRecord | null>(null)
   const { user, loading, signOut } = useAuth()
 
   function handleChatWithArticle(contentId: number) {
     setChatTarget(contentId)
     setPage('chat')
+  }
+
+  function handleOpenArchiveArticle(record: ContentRecord) {
+    setArchiveDetail(record)
+    setPage('archive-detail')
   }
 
 
@@ -60,7 +68,16 @@ export default function App() {
         ) : (
           <div className="w-full max-w-2xl mx-auto p-6 pt-0 flex flex-col gap-6">
             {page === 'pending' && <Pending />}
-            {page === 'archive' && <Archive onChatWithArticle={handleChatWithArticle} />}
+            {page === 'archive' && (
+              <Archive onChatWithArticle={handleChatWithArticle} onOpenArticle={handleOpenArchiveArticle} />
+            )}
+            {page === 'archive-detail' && archiveDetail && (
+              <ArchiveDetail
+                record={archiveDetail}
+                onBack={() => setPage('archive')}
+                onChatWithArticle={handleChatWithArticle}
+              />
+            )}
             {page === 'settings' && <Settings />}
           </div>
         )}

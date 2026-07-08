@@ -50,7 +50,7 @@ export interface ContentRecord {
     summaries?: Record<string, string>
     processing?: boolean
     stage?: string
-    thumbnail?: string | null
+    images?: string[]
     error?: string
     folder?: string | null
     embeddingError?: string

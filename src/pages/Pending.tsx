@@ -112,8 +112,12 @@ export default function Pending() {
             <a href={r.url} target="_blank" rel="noreferrer" className="text-xs text-indigo-400 break-all hover:underline">
               {r.url}
             </a>
-            {r.data.thumbnail && (
-              <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
+            {r.data.images && r.data.images.length > 0 && (
+              <div className="flex flex-row gap-2 overflow-x-auto pb-1">
+                {r.data.images.map((src, i) => (
+                  <img key={i} src={cachedImageSrc(src)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg flex-shrink-0" />
+                ))}
+              </div>
             )}
             {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
             {r.data.error && (

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, clipboard, ipcMain, protocol, Menu, screen } = require('electron')
+const { app, BrowserWindow, clipboard, ipcMain, protocol, Menu, screen, shell } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
 const settingsStore = require('./settingsStore')
@@ -162,7 +162,7 @@ async function processLink(url) {
     }
 
     data.original = result.text
-    data.thumbnail = result.image ?? null
+    data.images = result.images ?? []
     data.title = result.title ?? null
     data.summaries = {}
     if (result.error) {
@@ -309,6 +309,11 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  })
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {

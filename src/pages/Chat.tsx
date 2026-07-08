@@ -211,9 +211,9 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
               }`}
             >
               <button onClick={() => openSession(id)} className="flex items-center gap-3 p-3 text-left flex-1 min-w-0">
-                {article.data.thumbnail ? (
+                {article.data.images?.[0] ? (
                   <img
-                    src={cachedImageSrc(article.data.thumbnail)}
+                    src={cachedImageSrc(article.data.images[0])}
                     alt=""
                     className="h-10 w-10 object-cover rounded-lg flex-shrink-0"
                   />
