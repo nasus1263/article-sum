@@ -26,7 +26,7 @@ protocol.registerSchemesAsPrivileged([
 
 let sidecarProcess = null
 let mainWindow = null
-let isFirstFocus = true
+let lastClipboardText = ''
 let overlayWindow = null
 let overlayJobCount = 0
 let isAuthenticated = false
@@ -190,13 +190,12 @@ async function processLink(url) {
 }
 
 function watchClipboard() {
+  lastClipboardText = clipboard.readText().trim()
   if (mainWindow) {
     mainWindow.on('focus', () => {
-      if (isFirstFocus) {
-        isFirstFocus = false
-        return
-      }
       const text = clipboard.readText().trim()
+      if (!text || text === lastClipboardText) return
+      lastClipboardText = text
       if (isAuthenticated && URL_RE.test(text)) processLink(text)
     })
   }
