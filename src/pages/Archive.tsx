@@ -132,8 +132,10 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
               return (
                 <section
                   key={r.id}
-                  onClick={() => toggleExpanded(r.id)}
-                  className={`${cardClass} p-2 cursor-pointer hover:border-slate-600 hover:bg-slate-900/80 transition-colors`}
+                  onClick={() => !r.data.processing && toggleExpanded(r.id)}
+                  className={`${cardClass} p-2 cursor-pointer hover:border-slate-600 hover:bg-slate-900/80 transition-colors ${
+                    r.data.processing ? 'opacity-50 pointer-events-none' : ''
+                  }`}
                 >
                   <div className="flex flex-row items-center gap-3">
                     {r.data.thumbnail ? (
@@ -143,13 +145,19 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                     )}
                     <div className="flex flex-col gap-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
-                            r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
-                          }`}
-                        >
-                          {r.tag}
-                        </span>
+                        {r.data.processing ? (
+                          <span className="inline-block text-xs px-2 py-1 rounded-full font-medium bg-slate-700 animate-pulse">
+                            🔄 {r.data.stage ?? 'Processing...'}
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
+                              r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
+                            }`}
+                          >
+                            {r.tag}
+                          </span>
+                        )}
                         {r.data.category && (
                           <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
                         )}
@@ -190,19 +198,25 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
             }
 
             return (
-              <section key={r.id} className={cardClass}>
+              <section key={r.id} className={`${cardClass} ${r.data.processing ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div
-                  onClick={() => toggleExpanded(r.id)}
+                  onClick={() => !r.data.processing && toggleExpanded(r.id)}
                   className="flex items-center gap-2 flex-wrap cursor-pointer hover:opacity-80 transition-opacity"
                 >
                   <span className="text-slate-600 text-xs">▾</span>
-                  <span
-                    className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
-                      r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
-                    }`}
-                  >
-                    {r.tag}
-                  </span>
+                  {r.data.processing ? (
+                    <span className="inline-block text-xs px-2 py-1 rounded-full font-medium bg-slate-700 animate-pulse">
+                      🔄 {r.data.stage ?? 'Processing...'}
+                    </span>
+                  ) : (
+                    <span
+                      className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
+                        r.tag === 'Article' ? 'bg-indigo-600' : 'bg-slate-700'
+                      }`}
+                    >
+                      {r.tag}
+                    </span>
+                  )}
                   {r.data.category && (
                     <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{r.data.category}</span>
                   )}

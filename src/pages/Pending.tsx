@@ -74,12 +74,13 @@ export default function Pending() {
 
       {records?.map((r) => {
         const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
+        const isRegenerating = r.data.processing && r.data.stage === 'Regenerating summary...'
         return (
-          <section key={r.id} className={cardClass}>
+          <section key={r.id} className={`${cardClass} ${isRegenerating ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="flex items-center gap-2 flex-wrap">
               {r.data.processing ? (
-                <span className="inline-block text-xs px-2 py-1 rounded-full font-medium bg-slate-700">
-                  {r.data.stage ?? 'Processing...'}
+                <span className="inline-block text-xs px-2 py-1 rounded-full font-medium bg-slate-700 animate-pulse">
+                  🔄 {r.data.stage ?? 'Processing...'}
                 </span>
               ) : (
                 <span
