@@ -4,13 +4,22 @@ import type { Provider, SummaryOptions } from '../types'
 interface PipelineDefaults {
   defaultProvider: Provider
   defaultOptions: SummaryOptions
+  categories: string[]
+  activeFolder: string | null
 }
 
 export function usePipelineDefaults() {
   const [defaults, setDefaults] = useState<PipelineDefaults | null>(null)
 
   useEffect(() => {
-    window.api?.getSettings().then((s) => setDefaults({ defaultProvider: s.defaultProvider, defaultOptions: s.defaultOptions }))
+    window.api?.getSettings().then((s) =>
+      setDefaults({
+        defaultProvider: s.defaultProvider,
+        defaultOptions: s.defaultOptions,
+        categories: s.categories,
+        activeFolder: s.activeFolder,
+      })
+    )
   }, [])
 
   function updateDefaultProvider(defaultProvider: Provider) {
@@ -23,5 +32,15 @@ export function usePipelineDefaults() {
     window.api?.syncSettings({ defaultOptions })
   }
 
-  return { defaults, updateDefaultProvider, updateDefaultOptions }
+  function updateCategories(categories: string[]) {
+    setDefaults((prev) => (prev ? { ...prev, categories } : prev))
+    window.api?.syncSettings({ categories })
+  }
+
+  function updateActiveFolder(activeFolder: string | null) {
+    setDefaults((prev) => (prev ? { ...prev, activeFolder } : prev))
+    window.api?.syncSettings({ activeFolder })
+  }
+
+  return { defaults, updateDefaultProvider, updateDefaultOptions, updateCategories, updateActiveFolder }
 }

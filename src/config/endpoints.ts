@@ -9,7 +9,7 @@ export const OPENAI_BASE = 'https://api.openai.com/v1'
 export const NVIDIA_BASE = import.meta.env.DEV ? '/nvidia-nim/v1' : 'https://integrate.api.nvidia.com/v1'
 
 export const DEFAULT_MODELS: Record<Provider, string> = {
-  claude: 'claude-sonnet-5',
+  claude: 'claude-haiku-4-5-20251001',
   gemini: 'gemini-2.5-flash',
   openai: 'gpt-5.1',
   nvidia: 'meta/llama-3.3-70b-instruct',

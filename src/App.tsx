@@ -35,7 +35,7 @@ export default function App() {
   return (
     <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
       <header className="shrink-0 w-full max-w-2xl mx-auto p-6 pb-4 flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Article Summary</h1>
+        <h1 className="text-2xl font-bold">Clip Brief</h1>
         <nav className="flex gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 flex-wrap">
           {TABS.map((t) => (
             <button
