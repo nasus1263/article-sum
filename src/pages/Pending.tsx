@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ContentRecord } from '../types/global'
 import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
+import { cachedImageSrc } from '../utils/imageCache'
 
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 const inputClass =
@@ -53,7 +54,7 @@ export default function Pending() {
     <div className="flex flex-col gap-4">
       {defaults && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">Folder</label>
+          <label className="text-xs text-slate-500">Approve into folder</label>
           <select
             value={defaults.activeFolder ?? ''}
             onChange={(e) => updateActiveFolder(e.target.value || null)}
@@ -103,7 +104,7 @@ export default function Pending() {
               {r.url}
             </a>
             {r.data.thumbnail && (
-              <img src={r.data.thumbnail} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
+              <img src={cachedImageSrc(r.data.thumbnail)} alt="" className="max-h-[200px] w-auto object-contain rounded-lg" />
             )}
             {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
             {r.data.error && (

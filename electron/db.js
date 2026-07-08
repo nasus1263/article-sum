@@ -1,110 +1,90 @@
-const fs = require('fs')
-const path = require('path')
-const initSqlJs = require('sql.js')
-const { app } = require('electron')
+const { createClient } = require('@supabase/supabase-js')
+const settingsStore = require('./settingsStore')
 
-let db = null
+let client = null
+let clientKey = null
 
-function dbPath() {
-  return path.join(app.getPath('userData'), 'article-sum.sqlite')
-}
-
-async function getDb() {
-  if (db) return db
-  const SQL = await initSqlJs()
-  const file = dbPath()
-  db = fs.existsSync(file) ? new SQL.Database(fs.readFileSync(file)) : new SQL.Database()
-  db.run(`CREATE TABLE IF NOT EXISTS contents (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT NOT NULL,
-    tag TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    data TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  )`)
-  return db
-}
-
-function persist() {
-  fs.writeFileSync(dbPath(), Buffer.from(db.export()))
-}
-
-async function insertContent({ url, tag, data }) {
-  const d = await getDb()
-  d.run(`INSERT INTO contents (url, tag, status, data, created_at) VALUES (?, ?, 'pending', ?, ?)`, [
-    url,
-    tag,
-    JSON.stringify(data ?? {}),
-    new Date().toISOString(),
-  ])
-  // persist() 는 db.export() 를 호출하는데, 이게 last_insert_rowid() 를 0 으로 리셋한다.
-  // 따라서 id 를 먼저 읽고 persist 한다.
-  const [{ values }] = d.exec('SELECT last_insert_rowid()')
-  const id = values[0][0]
-  persist()
-  return id
-}
-
-async function updateContent(id, { tag, data }) {
-  const d = await getDb()
-  if (tag !== undefined) d.run(`UPDATE contents SET tag = ? WHERE id = ?`, [tag, id])
-  if (data !== undefined) d.run(`UPDATE contents SET data = ? WHERE id = ?`, [JSON.stringify(data), id])
-  persist()
+function getClient() {
+  const { supabase } = settingsStore.getSettings()
+  if (!supabase?.url || !supabase?.anonKey) {
+    throw new Error('Supabase is not configured. Set the project URL and anon key in Settings.')
+  }
+  const key = `${supabase.url}|${supabase.anonKey}`
+  if (!client || clientKey !== key) {
+    client = createClient(supabase.url, supabase.anonKey)
+    clientKey = key
+  }
+  return client
 }
 
 function rowToRecord(row) {
   return {
-    id: row[0],
-    url: row[1],
-    tag: row[2],
-    status: row[3],
-    data: JSON.parse(row[4]),
-    createdAt: row[5],
+    id: row.id,
+    url: row.url,
+    tag: row.tag,
+    status: row.status,
+    data: row.data,
+    createdAt: row.created_at,
   }
 }
 
+async function insertContent({ url, tag, data }) {
+  const { data: row, error } = await getClient()
+    .from('contents')
+    .insert({ url, tag, status: 'pending', data: data ?? {}, created_at: new Date().toISOString() })
+    .select('id')
+    .single()
+  if (error) throw error
+  return row.id
+}
+
+async function updateContent(id, { tag, data }) {
+  const patch = {}
+  if (tag !== undefined) patch.tag = tag
+  if (data !== undefined) patch.data = data
+  if (Object.keys(patch).length === 0) return
+  const { error } = await getClient().from('contents').update(patch).eq('id', id)
+  if (error) throw error
+}
+
 async function listByStatus(status) {
-  const d = await getDb()
-  const res = d.exec(`SELECT id, url, tag, status, data, created_at FROM contents WHERE status = ? ORDER BY id DESC`, [
-    status,
-  ])
-  if (res.length === 0) return []
-  return res[0].values.map(rowToRecord)
+  const { data, error } = await getClient()
+    .from('contents')
+    .select('id, url, tag, status, data, created_at')
+    .eq('status', status)
+    .order('id', { ascending: false })
+  if (error) throw error
+  return data.map(rowToRecord)
 }
 
 async function approve(id, folder) {
-  const d = await getDb()
-  const res = d.exec(`SELECT data FROM contents WHERE id = ?`, [id])
-  if (res.length === 0) return
-  const data = JSON.parse(res[0].values[0][0])
-  data.folder = folder ?? null
-  d.run(`UPDATE contents SET status = 'approved', data = ? WHERE id = ?`, [JSON.stringify(data), id])
-  persist()
+  const c = getClient()
+  const { data: row, error: fetchError } = await c.from('contents').select('data').eq('id', id).single()
+  if (fetchError) throw fetchError
+  const data = { ...row.data, folder: folder ?? null }
+  const { error } = await c.from('contents').update({ status: 'approved', data }).eq('id', id)
+  if (error) throw error
 }
 
 async function discard(id) {
-  const d = await getDb()
-  d.run(`DELETE FROM contents WHERE id = ?`, [id])
-  persist()
+  const { error } = await getClient().from('contents').delete().eq('id', id)
+  if (error) throw error
 }
 
 // 앱 시작 시 활성 job 이 없으므로, processing 상태로 남은 행은 이전 세션이
 // 중간에 끊긴 고아 행이다. 실패로 표시해 UI 에서 Discard 할 수 있게 한다.
 async function resetStuckJobs() {
-  const d = await getDb()
-  const res = d.exec(`SELECT id, data FROM contents WHERE status = 'pending'`)
-  if (res.length === 0) return
-  let changed = false
-  for (const [id, dataStr] of res[0].values) {
-    const data = JSON.parse(dataStr)
-    if (!data.processing) continue
-    data.processing = false
+  const c = getClient()
+  const { data: rows, error } = await c.from('contents').select('id, data').eq('status', 'pending')
+  if (error) throw error
+  for (const row of rows) {
+    if (!row.data.processing) continue
+    const data = { ...row.data, processing: false }
     delete data.stage
     data.error = data.error ?? 'Interrupted — the app was restarted while processing.'
-    d.run(`UPDATE contents SET data = ? WHERE id = ?`, [JSON.stringify(data), id])
-    changed = true
+    const { error: updateError } = await c.from('contents').update({ data }).eq('id', row.id)
+    if (updateError) throw updateError
   }
-  if (changed) persist()
 }
 
 module.exports = { insertContent, updateContent, listByStatus, approve, discard, resetStuckJobs }
