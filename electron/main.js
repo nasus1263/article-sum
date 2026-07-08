@@ -11,6 +11,8 @@ const SIDECAR_PORT = 8787
 const SIDECAR_URL = `http://127.0.0.1:${SIDECAR_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
+const SIDECAR_RETRY_DELAY_MS = 5000
+const SIDECAR_MAX_RETRIES = 5
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'appimg', privileges: { standard: true, supportFetchAPI: true, stream: true, bypassCSP: true } },
@@ -20,13 +22,14 @@ let sidecarProcess = null
 let lastClipboardText = ''
 let mainWindow = null
 let overlayWindow = null
-let summarizingCount = 0
+let overlayJobCount = 0
 const activeJobs = new Map()
 
-function createOverlayWindow() {
+async function ensureOverlayWindow() {
+  if (overlayWindow) return overlayWindow
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
-  const overlayWidth = 260
-  const overlayHeight = 48
+  const overlayWidth = 360
+  const overlayHeight = 90
   overlayWindow = new BrowserWindow({
     width: overlayWidth,
     height: overlayHeight,
@@ -45,21 +48,31 @@ function createOverlayWindow() {
   })
   overlayWindow.setIgnoreMouseEvents(true)
   overlayWindow.setAlwaysOnTop(true, 'screen-saver')
-  overlayWindow.loadFile(path.join(__dirname, 'overlay.html'))
   overlayWindow.on('closed', () => {
     overlayWindow = null
   })
+  await overlayWindow.loadFile(path.join(__dirname, 'overlay.html'))
+  return overlayWindow
 }
 
-function beginSummarizing() {
-  summarizingCount++
-  if (!overlayWindow) createOverlayWindow()
-  overlayWindow.showInactive()
+async function setOverlayText(text) {
+  const win = await ensureOverlayWindow()
+  await win.webContents.executeJavaScript(`document.querySelector('.label').textContent = ${JSON.stringify(text)}`)
 }
 
-function endSummarizing() {
-  summarizingCount = Math.max(0, summarizingCount - 1)
-  if (summarizingCount === 0) overlayWindow?.hide()
+async function showOverlay(text) {
+  overlayJobCount++
+  try {
+    await setOverlayText(text)
+    overlayWindow?.showInactive()
+  } catch (e) {
+    console.error('[overlay] show failed:', e)
+  }
+}
+
+function hideOverlayJob() {
+  overlayJobCount = Math.max(0, overlayJobCount - 1)
+  if (overlayJobCount === 0) overlayWindow?.hide()
 }
 
 function computeOptionKey(options) {
@@ -90,8 +103,23 @@ async function crawl(url, signal) {
     return await res.json()
   } catch (e) {
     console.error('[crawl] sidecar unreachable:', e)
-    return { success: false, text: null }
+    // 앱 시작 직후에는 python sidecar 가 아직 뜨는 중이라 ECONNREFUSED 가 날 수 있다.
+    // 이 경우만 별도 표시해서 processLink 에서 잠깐 재시도하게 한다.
+    const unreachable = e?.cause?.code === 'ECONNREFUSED'
+    return { success: false, text: null, unreachable }
   }
+}
+
+async function crawlWithRetry(url, signal) {
+  let result = await crawl(url, signal)
+  let attempt = 0
+  while (result.unreachable && attempt < SIDECAR_MAX_RETRIES && !signal.aborted) {
+    await new Promise((resolve) => setTimeout(resolve, SIDECAR_RETRY_DELAY_MS))
+    if (signal.aborted) break
+    attempt++
+    result = await crawl(url, signal)
+  }
+  return result
 }
 
 function broadcastQueueUpdate() {
@@ -120,10 +148,11 @@ async function processLink(url) {
   const controller = new AbortController()
   activeJobs.set(id, controller)
   let tag = 'Article'
-  let summarizingStarted = false
+
+  showOverlay('✨ Analyzing link...')
 
   try {
-    const { success, text, image } = await crawl(url, controller.signal)
+    const { success, text, image } = await crawlWithRetry(url, controller.signal)
     if (controller.signal.aborted) return
 
     if (!success || !text) {
@@ -138,8 +167,7 @@ async function processLink(url) {
     await db.updateContent(id, { data })
     broadcastQueueUpdate()
 
-    summarizingStarted = true
-    beginSummarizing()
+    setOverlayText('✨ Summarizing article...').catch((e) => console.error('[overlay] update failed:', e))
 
     const settings = settingsStore.getSettings()
     const { category, summary } = await summarizeArticle(
@@ -158,7 +186,7 @@ async function processLink(url) {
     console.error('[processLink] failed:', e)
     data.error = e instanceof Error ? e.message : String(e)
   } finally {
-    if (summarizingStarted) endSummarizing()
+    hideOverlayJob()
     if (!controller.signal.aborted) {
       data.processing = false
       delete data.stage

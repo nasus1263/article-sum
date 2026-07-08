@@ -18,7 +18,7 @@ function buildSystemPrompt(options, categories) {
   if (options.emoji) styleLines.push('Sprinkle in emojis that fit the content throughout the summary.')
   return `You are an AI that classifies and summarizes news articles.
 Classify the given article into exactly one of these categories: ${categories.join(', ')}. The category value must exactly match one from this list.
-Then summarize the article in ${LANGUAGE_NAMES[options.language]} in exactly 3 lines, each at most 50 characters. Format exactly as "1. ...\\n2. ...\\n3. ..." (numbered, separated by \n).
+Then summarize the article in ${LANGUAGE_NAMES[options.language]} in exactly 3 lines, each at most 100 characters. Format exactly as "1. ...\\n2. ...\\n3. ..." — a \n only ever separates one numbered item from the next. Never insert a \n inside a single numbered item (e.g. "1. xx\\nxxx\\n2. xxx" is forbidden); each item must stay on one line.
 ${styleLines.join('\n')}
 Output only the JSON format below. No markdown, no explanations.
 { "category": "${categories[0]}", "summary": "..." }`

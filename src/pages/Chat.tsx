@@ -164,7 +164,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
 
   async function handleDeleteSession(id: number) {
     setOpenMenuId(null)
-    if (!window.confirm('이 대화를 삭제하시겠습니까?')) return
+    if (!window.confirm('Delete this conversation?')) return
     await window.api?.chatDeleteSession(id)
     refreshSessionList()
     if (selectedId === id) {
@@ -189,7 +189,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
       <aside className="w-[26%] max-w-xs min-w-[220px] border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-y-auto">
         {sidebarIds.length === 0 && (
           <p className="text-slate-500 text-xs p-4">
-            Archive에서 "Chat with this article"를 눌러 대화를 시작하세요.
+            Start a chat by clicking "Chat with this article" in Archive.
           </p>
         )}
         {sidebarIds.map((id) => {
@@ -235,7 +235,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
                       onClick={() => handleDeleteSession(id)}
                       className="block w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-700 whitespace-nowrap"
                     >
-                      대화 삭제
+                      Delete conversation
                     </button>
                   </div>
                 </>
@@ -248,7 +248,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
       <section className="flex-1 flex flex-col min-w-0">
         {selectedArticle ? (
           <>
-            <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-800 flex-wrap">
+            <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b-2 border-indigo-500/50 shadow-[0_4px_16px_-6px_rgba(99,102,241,0.4)] flex-wrap">
               <a
                 href={selectedArticle.url}
                 target="_blank"
@@ -308,7 +308,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="기사에 대해 질문하세요..."
+                  placeholder="Ask a question about the article..."
                   rows={1}
                   className="flex-1 bg-transparent resize-none max-h-32 py-1.5 text-sm focus:outline-none placeholder:text-slate-500"
                 />
@@ -327,7 +327,7 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
             </div>
           </>
         ) : (
-          <p className="text-slate-500 text-sm p-6">왼쪽에서 대화를 선택하세요.</p>
+          <p className="text-slate-500 text-sm p-6">Select a conversation on the left.</p>
         )}
       </section>
     </div>

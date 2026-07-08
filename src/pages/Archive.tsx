@@ -161,7 +161,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                         onClick={() => setFullTextRecord(r)}
                         className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-2 py-1 font-medium whitespace-nowrap"
                       >
-                        전문 보기
+                        View full text
                       </button>
                     )}
                     <a
@@ -170,7 +170,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                       rel="noreferrer"
                       className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-2 py-1 font-medium text-center whitespace-nowrap"
                     >
-                      웹에서 보기
+                      View on web
                     </a>
                   </div>
                 </section>
@@ -220,7 +220,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                       }}
                       className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 font-medium"
                     >
-                      전문 보기
+                      View full text
                     </button>
                   )}
                   <a
@@ -230,7 +230,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                     onClick={(e) => e.stopPropagation()}
                     className="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg px-3 py-1.5 font-medium"
                   >
-                    웹에서 보기
+                    View on web
                   </a>
                   <button
                     onClick={(e) => {
@@ -263,7 +263,7 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
                 onClick={() => setFullTextRecord(null)}
                 className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 flex-shrink-0"
               >
-                닫기
+                Close
               </button>
             </div>
             <p className="whitespace-pre-wrap text-slate-200 text-sm leading-relaxed overflow-y-auto">

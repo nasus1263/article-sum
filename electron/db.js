@@ -52,7 +52,7 @@ async function listByStatus(status) {
     .from('contents')
     .select('id, url, tag, status, data, created_at')
     .eq('status', status)
-    .order('id', { ascending: false })
+    .order('id', { ascending: status === 'pending' })
   if (error) throw error
   return data.map(rowToRecord)
 }
