@@ -4,6 +4,22 @@ const settingsStore = require('./settingsStore')
 let client = null
 let clientKey = null
 
+// Main process has no localStorage, so the auth session (refresh token) is
+// persisted through settingsStore instead — same plaintext handling as the anon key.
+const authStorageAdapter = {
+  getItem: (key) => settingsStore.getSettings().authStorage?.[key] ?? null,
+  setItem: (key, value) => {
+    const { authStorage } = settingsStore.getSettings()
+    settingsStore.updateSettings({ authStorage: { ...authStorage, [key]: value } })
+  },
+  removeItem: (key) => {
+    const { authStorage } = settingsStore.getSettings()
+    const next = { ...authStorage }
+    delete next[key]
+    settingsStore.updateSettings({ authStorage: next })
+  },
+}
+
 function getClient() {
   const { supabase } = settingsStore.getSettings()
   if (!supabase?.url || !supabase?.anonKey) {
@@ -11,10 +27,46 @@ function getClient() {
   }
   const key = `${supabase.url}|${supabase.anonKey}`
   if (!client || clientKey !== key) {
-    client = createClient(supabase.url, supabase.anonKey)
+    client = createClient(supabase.url, supabase.anonKey, {
+      auth: { storage: authStorageAdapter, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    })
     clientKey = key
   }
   return client
+}
+
+function rowToUser(user) {
+  return user ? { id: user.id, email: user.email ?? null } : null
+}
+
+async function signUp(email, password) {
+  const { data, error } = await getClient().auth.signUp({ email, password })
+  if (error) throw error
+  return rowToUser(data.user)
+}
+
+async function signIn(email, password) {
+  const { data, error } = await getClient().auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return rowToUser(data.user)
+}
+
+async function signOut() {
+  const { error } = await getClient().auth.signOut()
+  if (error) throw error
+}
+
+async function getUser() {
+  const { data, error } = await getClient().auth.getSession()
+  if (error) throw error
+  return rowToUser(data.session?.user ?? null)
+}
+
+function onAuthStateChange(callback) {
+  const {
+    data: { subscription },
+  } = getClient().auth.onAuthStateChange((_event, session) => callback(rowToUser(session?.user ?? null)))
+  return () => subscription.unsubscribe()
 }
 
 function rowToRecord(row) {
@@ -87,4 +139,16 @@ async function resetStuckJobs() {
   }
 }
 
-module.exports = { insertContent, updateContent, listByStatus, approve, discard, resetStuckJobs }
+module.exports = {
+  insertContent,
+  updateContent,
+  listByStatus,
+  approve,
+  discard,
+  resetStuckJobs,
+  signUp,
+  signIn,
+  signOut,
+  getUser,
+  onAuthStateChange,
+}

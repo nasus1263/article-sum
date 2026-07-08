@@ -23,6 +23,7 @@ let lastClipboardText = ''
 let mainWindow = null
 let overlayWindow = null
 let overlayJobCount = 0
+let isAuthenticated = false
 const activeJobs = new Map()
 
 async function ensureOverlayWindow() {
@@ -134,6 +135,12 @@ function broadcastChatEvent(payload) {
   }
 }
 
+function broadcastAuthChange(user) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('auth:changed', user)
+  }
+}
+
 async function processLink(url) {
   const data = { processing: true, stage: 'Fetching article...' }
   let id
@@ -204,7 +211,7 @@ function watchClipboard() {
     const text = clipboard.readText().trim()
     if (!text || text === lastClipboardText) return
     lastClipboardText = text
-    if (URL_RE.test(text)) processLink(text)
+    if (isAuthenticated && URL_RE.test(text)) processLink(text)
   }, CLIPBOARD_POLL_MS)
 }
 
@@ -227,6 +234,11 @@ function registerIpcHandlers() {
     await db.discard(id)
     broadcastQueueUpdate()
   })
+
+  ipcMain.handle('auth:signUp', (_event, email, password) => db.signUp(email, password))
+  ipcMain.handle('auth:signIn', (_event, email, password) => db.signIn(email, password))
+  ipcMain.handle('auth:signOut', () => db.signOut())
+  ipcMain.handle('auth:getUser', () => db.getUser())
 
   ipcMain.handle('chat:get', (_event, contentId) => chatStore.getSession(contentId))
   ipcMain.handle('chat:list', () => chatStore.listSessions())
@@ -279,6 +291,14 @@ app.whenReady().then(async () => {
   protocol.handle('appimg', imageCache.fetchImage)
   registerIpcHandlers()
   startSidecar()
+  try {
+    db.onAuthStateChange((user) => {
+      isAuthenticated = !!user
+      broadcastAuthChange(user)
+    })
+  } catch (e) {
+    console.error('[auth] failed to subscribe:', e.message)
+  }
   await db.resetStuckJobs().catch((e) => console.error('[db] resetStuckJobs failed:', e.message))
   createWindow()
   watchClipboard()

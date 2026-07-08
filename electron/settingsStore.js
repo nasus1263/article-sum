@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   categories: ['Politics', 'Economy', 'Society', 'Culture', 'Entertainment', 'Sports', 'IT'],
   activeFolder: null,
   supabase: { url: '', anonKey: '' },
+  authStorage: {},
 }
 
 let cache = null

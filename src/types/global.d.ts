@@ -19,6 +19,11 @@ export interface ChatSessionSummary {
   lastMessage: string | null
 }
 
+export interface AuthUser {
+  id: string
+  email: string | null
+}
+
 export interface ChatEvent {
   type: 'chunk' | 'done' | 'error'
   contentId: number
@@ -64,6 +69,11 @@ export interface ElectronApi {
   discard: (id: number) => Promise<void>
   cancel: (id: number) => Promise<void>
   onQueueUpdate: (callback: () => void) => () => void
+  authSignUp: (email: string, password: string) => Promise<AuthUser | null>
+  authSignIn: (email: string, password: string) => Promise<AuthUser | null>
+  authSignOut: () => Promise<void>
+  authGetUser: () => Promise<AuthUser | null>
+  onAuthChange: (callback: (user: AuthUser | null) => void) => () => void
   chatGetSession: (contentId: number) => Promise<ChatSession>
   chatListSessions: () => Promise<ChatSessionSummary[]>
   chatDeleteSession: (contentId: number) => Promise<void>

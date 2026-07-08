@@ -3,8 +3,10 @@ import Pending from './pages/Pending'
 import Archive from './pages/Archive'
 import Settings from './pages/Settings'
 import Chat from './pages/Chat'
+import Login from './pages/Login'
 import { useApiKeys } from './hooks/useApiKeys'
 import { useModels } from './hooks/useModels'
+import { useAuth } from './hooks/useAuth'
 
 type Page = 'pending' | 'archive' | 'chat' | 'settings'
 
@@ -20,6 +22,7 @@ export default function App() {
   const [chatTarget, setChatTarget] = useState<number | null>(null)
   const { keys } = useApiKeys()
   const { models } = useModels()
+  const { user, loading, signOut } = useAuth()
 
   // Electron 메인 프로세스는 클립보드 파이프라인에서 같은 API 키/모델을 쓴다.
   // 렌더러 localStorage 값이 바뀔 때마다 main으로 동기화.
@@ -31,6 +34,8 @@ export default function App() {
     setChatTarget(contentId)
     setPage('chat')
   }
+
+  if (loading) return null
 
   return (
     <div className="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
@@ -49,10 +54,17 @@ export default function App() {
             </button>
           ))}
         </nav>
+        {user && (
+          <button onClick={signOut} className="text-xs text-slate-400 hover:text-slate-200">
+            Sign out ({user.email})
+          </button>
+        )}
       </header>
 
       <div className={`flex-1 min-h-0 ${page === 'chat' ? '' : 'overflow-y-auto'}`}>
-        {page === 'chat' ? (
+        {page !== 'settings' && !user ? (
+          <Login />
+        ) : page === 'chat' ? (
           <Chat initialContentId={chatTarget} />
         ) : (
           <div className="w-full max-w-2xl mx-auto p-6 pt-0 flex flex-col gap-6">
