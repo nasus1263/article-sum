@@ -7,7 +7,7 @@ const chatStore = require('./chatStore')
 const imageCache = require('./imageCache')
 const { streamChat } = require('./llm')
 
-const BACKEND_PORT = 3000
+const BACKEND_PORT = 9000
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 const URL_RE = /^https?:\/\/\S+$/i
 const CLIPBOARD_POLL_MS = 1500
