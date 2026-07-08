@@ -11,7 +11,7 @@ interface PipelineDefaults {
 export function usePipelineDefaults() {
   const [defaults, setDefaults] = useState<PipelineDefaults | null>(null)
 
-  useEffect(() => {
+  function refresh() {
     window.api?.getSettings().then((s) =>
       setDefaults({
         backendUrl: s.backendUrl,
@@ -20,6 +20,10 @@ export function usePipelineDefaults() {
         activeFolder: s.activeFolder,
       })
     )
+  }
+
+  useEffect(() => {
+    refresh()
   }, [])
 
   function updateBackendUrl(backendUrl: string) {
@@ -42,6 +46,6 @@ export function usePipelineDefaults() {
     window.api?.syncSettings({ activeFolder })
   }
 
-  return { defaults, updateBackendUrl, updateDefaultOptions, updateCategories, updateActiveFolder }
+  return { defaults, refresh, updateBackendUrl, updateDefaultOptions, updateCategories, updateActiveFolder }
 }
 

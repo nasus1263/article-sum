@@ -10,7 +10,7 @@ const inputClass =
 export default function Pending() {
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
   const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
-  const { defaults, updateActiveFolder } = usePipelineDefaults()
+  const { defaults, refresh: refreshDefaults, updateActiveFolder } = usePipelineDefaults()
 
   function refresh() {
     window.api?.listPending().then(setRecords)
@@ -19,6 +19,18 @@ export default function Pending() {
   useEffect(() => {
     refresh()
     return window.api?.onQueueUpdate(refresh)
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'F5') {
+        e.preventDefault()
+        refresh()
+        refreshDefaults()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   async function handleApprove(id: number) {

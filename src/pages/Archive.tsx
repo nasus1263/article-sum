@@ -22,6 +22,17 @@ export default function Archive({ onChatWithArticle }: { onChatWithArticle: (id:
     refresh()
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'F5') {
+        e.preventDefault()
+        refresh()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   async function handleDelete(id: number) {
     if (!window.confirm('Delete this item?')) return
     await window.api?.discard(id)

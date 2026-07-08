@@ -61,9 +61,27 @@ export default function Chat({ initialContentId }: { initialContentId: number | 
     window.api?.chatListSessions().then(setSessionSummaries)
   }
 
-  useEffect(() => {
+  function refresh() {
     window.api?.listApproved().then(setArticles)
     refreshSessionList()
+    if (selectedIdRef.current != null) {
+      window.api?.chatGetSession(selectedIdRef.current).then(setSession)
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'F5') {
+        e.preventDefault()
+        refresh()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   useEffect(() => {

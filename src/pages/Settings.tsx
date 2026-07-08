@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LANGUAGES } from '../types'
 import type { SummaryOptions } from '../types'
 import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
@@ -8,8 +8,20 @@ const inputClass =
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 
 export default function Settings() {
-  const { defaults, updateBackendUrl, updateCategories, updateDefaultOptions } = usePipelineDefaults()
+  const { defaults, refresh, updateBackendUrl, updateCategories, updateDefaultOptions } = usePipelineDefaults()
   const [newCategory, setNewCategory] = useState('')
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'F5') {
+        e.preventDefault()
+        refresh()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleOptionsChange(o: SummaryOptions) {
     updateDefaultOptions(o)
