@@ -134,7 +134,6 @@ export default function App() {
                 />
               )}
               {page === 'storage' && (
-                // Search field (with filters + brief-label) shared with the Categories tab's future Favorites view — see FeaturedArchiveList.tsx
                 <Archive
                   variant="favorites"
                   onChatWithArticle={handleChatWithArticle}
@@ -142,10 +141,14 @@ export default function App() {
                 />
               )}
               {page === 'favorites' && (
-                // Favorites feature not implemented yet, so nothing is shown for now.
-                // Once implemented, reuse <FeaturedArchiveList> (src/components/FeaturedArchiveList.tsx) here,
-                // the same module the Archive and Storage tabs use above.
-                null
+                // Same search field + filters + featured list as the Archive tab (favoritesOnly
+                // limits it to favorited items, sorted most-recently-favorited first).
+                <Archive
+                  variant="favorites"
+                  favoritesOnly
+                  onChatWithArticle={handleChatWithArticle}
+                  onOpenArticle={(record) => { setArchiveDetail(record); setPage('archive-detail') }}
+                />
               )}
               {page === 'archive-detail' && archiveDetail && (
                 <ArchiveDetail

@@ -45,6 +45,7 @@ export interface ContentRecord {
   status: 'pending' | 'approved'
   embedding?: number[] | null
   similarity?: number
+  favoritedAt: string | null
   data: {
     original?: string
     title?: string | null
@@ -71,6 +72,7 @@ export interface ElectronApi {
   cancel: (id: number) => Promise<void>
   regenerate: (id: number) => Promise<void>
   getRelated: (id: number) => Promise<ContentRecord[]>
+  setFavorite: (id: number, favorited: boolean) => Promise<void>
   onQueueUpdate: (callback: () => void) => () => void
   authSignUp: (email: string, password: string) => Promise<AuthUser | null>
   authSignIn: (email: string, password: string) => Promise<AuthUser | null>

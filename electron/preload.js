@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
   cancel: (id) => ipcRenderer.invoke('contents:cancel', id),
   regenerate: (id) => ipcRenderer.invoke('contents:regenerate', id),
   getRelated: (id) => ipcRenderer.invoke('contents:related', id),
+  setFavorite: (id, favorited) => ipcRenderer.invoke('contents:set-favorite', id, favorited),
   onQueueUpdate: (callback) => {
     const listener = () => callback()
     ipcRenderer.on('queue:updated', listener)

@@ -71,6 +71,7 @@ function rowToRecord(row) {
     status: row.status,
     data: row.data,
     embedding: row.embedding ?? null,
+    favoritedAt: row.favorited_at ?? null,
     createdAt: row.created_at,
   }
 }
@@ -109,7 +110,7 @@ async function getRelated(id) {
 async function listByStatus(status) {
   const { data, error } = await getClient()
     .from('contents')
-    .select('id, url, tag, status, data, embedding, created_at')
+    .select('id, url, tag, status, data, embedding, favorited_at, created_at')
     .eq('status', status)
     .order('id', { ascending: status === 'pending' })
   if (error) throw error
@@ -119,11 +120,19 @@ async function listByStatus(status) {
 async function getContent(id) {
   const { data, error } = await getClient()
     .from('contents')
-    .select('id, url, tag, status, data, embedding, created_at')
+    .select('id, url, tag, status, data, embedding, favorited_at, created_at')
     .eq('id', id)
     .single()
   if (error) throw error
   return rowToRecord(data)
+}
+
+async function setFavorite(id, favorited) {
+  const { error } = await getClient()
+    .from('contents')
+    .update({ favorited_at: favorited ? new Date().toISOString() : null })
+    .eq('id', id)
+  if (error) throw error
 }
 
 async function approve(id, folder) {
@@ -165,6 +174,7 @@ module.exports = {
   listByStatus,
   approve,
   discard,
+  setFavorite,
   resetStuckJobs,
   signUp,
   signIn,

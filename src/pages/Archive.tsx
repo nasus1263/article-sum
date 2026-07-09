@@ -16,10 +16,14 @@ export default function Archive({
   onChatWithArticle,
   onOpenArticle,
   variant = 'library',
+  favoritesOnly = false,
 }: {
   onChatWithArticle: (id: number) => void
   onOpenArticle: (record: ContentRecord) => void
   variant?: 'library' | 'favorites'
+  // When true (Favorites tab), only show favorited items, most recently favorited first.
+  // Otherwise identical to the Archive tab — see App.tsx.
+  favoritesOnly?: boolean
 }) {
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
   const [search, setSearch] = useState('')
@@ -72,7 +76,12 @@ export default function Archive({
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return (records ?? []).filter((r) => {
+    const base = favoritesOnly
+      ? (records ?? [])
+          .filter((r) => r.favoritedAt)
+          .sort((a, b) => (b.favoritedAt as string).localeCompare(a.favoritedAt as string))
+      : records ?? []
+    return base.filter((r) => {
       if (categoryFilter.size > 0 && !(r.data.category && categoryFilter.has(r.data.category))) return false
       if (folderFilter === NO_FOLDER && r.data.folder) return false
       if (folderFilter !== null && folderFilter !== NO_FOLDER && r.data.folder !== folderFilter) return false
@@ -80,7 +89,12 @@ export default function Archive({
       const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
       return r.url.toLowerCase().includes(query) || (summary?.toLowerCase().includes(query) ?? false)
     })
-  }, [records, search, categoryFilter, folderFilter])
+  }, [records, search, categoryFilter, folderFilter, favoritesOnly])
+
+  async function toggleFavorite(record: ContentRecord) {
+    await window.api?.setFavorite(record.id, !record.favoritedAt)
+    refresh()
+  }
 
   if (!window.api) {
     if (variant === 'favorites') return <FeaturedArchiveListPreview />
@@ -145,8 +159,13 @@ export default function Archive({
             </div>
           </div>
         </div>
-        <div className="brief-label">ARCHIVE</div>
-        <FeaturedArchiveList records={filtered} onOpenArticle={onOpenArticle} emptyMessage="No favorite articles yet." />
+        <div className="brief-label">{favoritesOnly ? 'FAVORITES' : 'ARCHIVE'}</div>
+        <FeaturedArchiveList
+          records={filtered}
+          onOpenArticle={onOpenArticle}
+          onToggleFavorite={toggleFavorite}
+          emptyMessage={favoritesOnly ? 'No favorite articles yet.' : 'No articles yet.'}
+        />
       </div>
     )
   }

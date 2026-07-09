@@ -213,6 +213,10 @@ function registerIpcHandlers() {
     void processLink(url.trim())
   })
   ipcMain.handle('contents:related', (_event, id) => db.getRelated(id))
+  ipcMain.handle('contents:set-favorite', async (_event, id, favorited) => {
+    await db.setFavorite(id, favorited)
+    broadcastQueueUpdate()
+  })
   ipcMain.handle('contents:approve', async (_event, id) => {
     const { activeFolder } = settingsStore.getSettings()
     await db.approve(id, activeFolder)
