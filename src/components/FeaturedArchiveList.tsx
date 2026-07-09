@@ -17,7 +17,8 @@ function FavoriteStar({ record, onToggleFavorite }: { record: ContentRecord; onT
   )
 }
 
-// Shared layout: 1 featured item on top, then up to 2 items per row below.
+// Shared layout: 1 featured item on top, then all remaining items in rows of 2 below.
+// No pagination/lazy-loading — everything renders at once.
 // Used by the Archive tab and the Favorites tab (favoritesOnly=true) — see Archive.tsx.
 export default function FeaturedArchiveList({
   records,
@@ -48,7 +49,7 @@ export default function FeaturedArchiveList({
         <FavoriteStar record={featured} onToggleFavorite={onToggleFavorite} />
       </article>
       <div className="favorite-grid">
-        {rest.slice(0, 2).map((record) => (
+        {rest.map((record) => (
           <article key={record.id} onClick={() => onOpenArticle(record)}>
             {record.data.images?.[0] ? <img className="favorite-thumb" src={cachedImageSrc(record.data.images[0])} alt="" /> : <div className="favorite-thumb" />}
             <span>RECENTLY SAVED</span>

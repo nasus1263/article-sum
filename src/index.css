@@ -57,12 +57,16 @@ body { margin: 0; min-width: 320px; min-height: 100vh; background: #f7f7f3; }
 .brief-grid { margin-top: 54px; display: grid; grid-template-columns: 1fr; gap: 30px; }
 .brief-summary { min-height: 260px; padding: 0 0 30px; border-bottom: 2px solid #11110f; }
 .brief-label { width: 100%; padding: 16px 20px; margin-bottom: 18px; background: #11110f; color: #f5f2e9; font-size: 12px; font-weight: 600; letter-spacing: .12em; }
-.brief-label.light { width: calc(100% - 80px); margin-bottom: 20px; background: #e6e2d9; color: #11110f; }
 .brief-image { grid-column: 1; grid-row: auto; min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border: 1px solid #c9c5bc; background: #ebe8e1; color: #77736b; font-size: 11px; letter-spacing: .12em; }
 .brief-article { min-height: 130px; color: #656159; }
 .brief-article p { margin: 0; max-width: 680px; font-size: 14px; line-height: 1.65; }
-.brief-recommendations { grid-column: 1 / -1; margin-top: 10px; }
 .brief-recommendations h2 { margin: 0 0 26px; padding: 16px 20px; background: #11110f; color: #f5f2e9; font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .12em; text-transform: uppercase; }
+.recommendation-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.recommendation-card { display: flex; flex-direction: column; padding: 0; border: 1px solid #11110f; background: #eee8dd; text-align: left; cursor: pointer; }
+.recommendation-card img, .recommendation-thumb { width: 100%; height: 96px; object-fit: cover; background: #d5d0c7; filter: grayscale(1); }
+.recommendation-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+.recommendation-card-body h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.recommendation-card-body p { margin: 0; font-size: 10.5px; color: #6f6a63; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .recommendation-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; }
 .recommendation-columns > div + div { padding-left: 38px; border-left: 1px solid #11110f; }
 .recommendation-columns i { display: block; height: 3px; margin-bottom: 15px; background: #66635d; }
@@ -211,7 +215,7 @@ body { margin: 0; min-width: 320px; min-height: 100vh; background: #f7f7f3; }
   .brief-search button { width: 46px; padding: 0; justify-content: center; font-size: 0; }
   .brief-grid { margin-top: 36px; grid-template-columns: 1fr; gap: 24px; }
   .brief-image { grid-column: 1; grid-row: auto; min-height: 240px; }
-  .brief-recommendations { grid-column: 1; }
+  .recommendation-cards { grid-template-columns: 1fr; }
   .recommendation-columns { grid-template-columns: 1fr; }
   .recommendation-columns > div + div { padding: 20px 0 0; border-left: 0; border-top: 1px solid #11110f; }
   .page-body { padding: 38px 20px 90px; }

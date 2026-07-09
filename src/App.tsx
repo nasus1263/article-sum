@@ -93,7 +93,7 @@ export default function App() {
         </button>
         <nav className="sidebar-nav" aria-label="Main navigation">
           {navItems.map((item) => (
-            <button key={item.id} className={`nav-item ${page === item.id || (item.id === 'archive' && page === 'archive-detail') ? 'active' : ''}`} onClick={() => goTo(item.id)}>
+            <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} onClick={() => goTo(item.id)}>
               <span className="nav-icon"><Icon name={item.icon} /></span>
               <span className="nav-label">{item.label}</span>
             </button>
@@ -115,13 +115,15 @@ export default function App() {
           <>
             {page === 'pending' && (
               <section className="brief-home">
-                <form className="brief-search" onSubmit={submitUrl}>
-                  <Icon name="search" size={22} />
-                  <input value={url} onChange={(e) => { setUrl(e.target.value); setUrlState('idle') }} placeholder="Paste a news article URL" aria-label="News article URL" />
-                  <button type="submit" disabled={urlState === 'submitting'}>Create brief <Icon name="arrow" size={18} /></button>
-                </form>
-                {urlState === 'error' && <p className="form-note error">Enter a valid URL beginning with http:// or https://</p>}
-                {urlState === 'done' && <p className="form-note">Your article is being prepared below.</p>}
+                <div className="mb-8">
+                  <form className="brief-search" onSubmit={submitUrl}>
+                    <Icon name="search" size={22} />
+                    <input value={url} onChange={(e) => { setUrl(e.target.value); setUrlState('idle') }} placeholder="Paste a news article URL" aria-label="News article URL" />
+                    <button type="submit" disabled={urlState === 'submitting'}>Create brief <Icon name="arrow" size={18} /></button>
+                  </form>
+                  {urlState === 'error' && <p className="form-note error">Enter a valid URL beginning with http:// or https://</p>}
+                  {urlState === 'done' && <p className="form-note">Your article is being prepared below.</p>}
+                </div>
                 <Pending />
               </section>
             )}
@@ -153,7 +155,7 @@ export default function App() {
               {page === 'archive-detail' && archiveDetail && (
                 <ArchiveDetail
                   record={archiveDetail}
-                  onBack={() => setPage('archive')}
+                  onBack={() => setPage('storage')}
                   onChatWithArticle={handleChatWithArticle}
                   onOpenArticle={(record) => setArchiveDetail(record)}
                 />
