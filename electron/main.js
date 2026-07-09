@@ -146,7 +146,7 @@ async function processLink(url) {
       body: JSON.stringify({
         url,
         options: settings.defaultOptions,
-        categories: settings.categories,
+        categories: settingsStore.CATEGORIES,
       }),
       signal: AbortSignal.any([AbortSignal.timeout(60_000), controller.signal]),
     })
@@ -172,7 +172,11 @@ async function processLink(url) {
       data.summaries[computeOptionKey(settings.defaultOptions)] = result.summary
     }
 
-    // OpenAI provider가 제거되어 임베딩 키가 없으므로 임베딩 생성 시도를 생략함
+    embedding = result.embedding
+    data.embeddingError = result.embeddingError
+    console.log(
+      `[processLink] id=${id} embedding=${embedding ? `${embedding.length}d vector` : 'none'} embeddingError=${data.embeddingError ?? 'none'}`
+    )
   } catch (e) {
     if (controller.signal.aborted) return
     console.error('[processLink] failed:', e)
@@ -239,7 +243,7 @@ function registerIpcHandlers() {
         body: JSON.stringify({
           text: record.data.original,
           options: settings.defaultOptions,
-          categories: settings.categories,
+          categories: settingsStore.CATEGORIES,
         }),
       })
 
@@ -335,6 +339,13 @@ app.whenReady().then(async () => {
         { role: 'copy' },
         { role: 'paste' },
         { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' }
       ]
     }
   ]

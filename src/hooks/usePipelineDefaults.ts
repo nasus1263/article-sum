@@ -4,7 +4,7 @@ import type { SummaryOptions } from '../types'
 interface PipelineDefaults {
   backendUrl: string
   defaultOptions: SummaryOptions
-  categories: string[]
+  folders: string[]
   activeFolder: string | null
 }
 
@@ -16,7 +16,7 @@ export function usePipelineDefaults() {
       setDefaults({
         backendUrl: s.backendUrl,
         defaultOptions: s.defaultOptions,
-        categories: s.categories,
+        folders: s.folders,
         activeFolder: s.activeFolder,
       })
     )
@@ -36,9 +36,9 @@ export function usePipelineDefaults() {
     window.api?.syncSettings({ defaultOptions })
   }
 
-  function updateCategories(categories: string[]) {
-    setDefaults((prev) => (prev ? { ...prev, categories } : prev))
-    window.api?.syncSettings({ categories })
+  function updateFolders(folders: string[]) {
+    setDefaults((prev) => (prev ? { ...prev, folders } : prev))
+    window.api?.syncSettings({ folders })
   }
 
   function updateActiveFolder(activeFolder: string | null) {
@@ -46,6 +46,6 @@ export function usePipelineDefaults() {
     window.api?.syncSettings({ activeFolder })
   }
 
-  return { defaults, refresh, updateBackendUrl, updateDefaultOptions, updateCategories, updateActiveFolder }
+  return { defaults, refresh, updateBackendUrl, updateDefaultOptions, updateFolders, updateActiveFolder }
 }
 

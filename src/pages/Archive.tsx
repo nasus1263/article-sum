@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ContentRecord } from '../types/global'
 import { cachedImageSrc } from '../utils/imageCache'
+import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
 
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 const inputClass =
@@ -16,7 +17,9 @@ export default function Archive({
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
+  const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
+  const { defaults } = usePipelineDefaults()
 
   function refresh() {
     window.api?.listApproved().then(setRecords)
@@ -58,11 +61,12 @@ export default function Archive({
     const query = search.trim().toLowerCase()
     return (records ?? []).filter((r) => {
       if (categoryFilter.size > 0 && !(r.data.category && categoryFilter.has(r.data.category))) return false
+      if (folderFilter !== null && r.data.folder !== folderFilter) return false
       if (!query) return true
       const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
       return r.url.toLowerCase().includes(query) || (summary?.toLowerCase().includes(query) ?? false)
     })
-  }, [records, search, categoryFilter])
+  }, [records, search, categoryFilter, folderFilter])
 
   if (!window.api) {
     return <p className="text-slate-500 text-sm">This feature is only available in the Electron app.</p>
@@ -90,20 +94,47 @@ export default function Archive({
           className={inputClass}
         />
         {categories.length > 0 && (
+          <div className="flex items-start gap-2">
+            <span className="text-xs font-semibold text-slate-500 pt-1">Category</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => toggleCategoryFilter(c)}
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+                    categoryFilter.has(c) ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-start gap-2">
+          <span className="text-xs font-semibold text-slate-500 pt-1">Folder</span>
           <div className="flex items-center gap-2 flex-wrap">
-            {categories.map((c) => (
+            <button
+              onClick={() => setFolderFilter(null)}
+              className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+                folderFilter === null ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ALL
+            </button>
+            {(defaults?.folders ?? []).map((f) => (
               <button
-                key={c}
-                onClick={() => toggleCategoryFilter(c)}
+                key={f}
+                onClick={() => setFolderFilter(f)}
                 className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
-                  categoryFilter.has(c) ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                  folderFilter === f ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {c}
+                {f}
               </button>
             ))}
           </div>
-        )}
+        </div>
       </div>
 
       {records.length === 0 && <p className="text-slate-500 text-sm">No archived items.</p>}

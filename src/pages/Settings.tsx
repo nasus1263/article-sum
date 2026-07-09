@@ -8,8 +8,8 @@ const inputClass =
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 
 export default function Settings() {
-  const { defaults, refresh, updateBackendUrl, updateCategories, updateDefaultOptions } = usePipelineDefaults()
-  const [newCategory, setNewCategory] = useState('')
+  const { defaults, refresh, updateBackendUrl, updateFolders, updateDefaultOptions } = usePipelineDefaults()
+  const [newFolder, setNewFolder] = useState('')
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -27,23 +27,23 @@ export default function Settings() {
     updateDefaultOptions(o)
   }
 
-  function handleCategoryRename(index: number, value: string) {
+  function handleFolderRename(index: number, value: string) {
     if (!defaults) return
-    const next = [...defaults.categories]
+    const next = [...defaults.folders]
     next[index] = value
-    updateCategories(next)
+    updateFolders(next)
   }
 
-  function handleCategoryRemove(index: number) {
+  function handleFolderRemove(index: number) {
     if (!defaults) return
-    updateCategories(defaults.categories.filter((_, i) => i !== index))
+    updateFolders(defaults.folders.filter((_, i) => i !== index))
   }
 
-  function handleCategoryAdd() {
-    const trimmed = newCategory.trim()
-    if (!defaults || !trimmed || defaults.categories.includes(trimmed)) return
-    updateCategories([...defaults.categories, trimmed])
-    setNewCategory('')
+  function handleFolderAdd() {
+    const trimmed = newFolder.trim()
+    if (!defaults || !trimmed || defaults.folders.includes(trimmed)) return
+    updateFolders([...defaults.folders, trimmed])
+    setNewFolder('')
   }
 
   return (
@@ -103,17 +103,17 @@ export default function Settings() {
             </label>
           </section>
 
-          <h2 className="text-lg font-semibold text-slate-200">Categories</h2>
+          <h2 className="text-lg font-semibold text-slate-200">Folders</h2>
           <div className={cardClass}>
-            {defaults.categories.map((c, i) => (
+            {defaults.folders.map((c, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
                   value={c}
-                  onChange={(e) => handleCategoryRename(i, e.target.value)}
+                  onChange={(e) => handleFolderRename(i, e.target.value)}
                   className={`${inputClass} flex-1`}
                 />
                 <button
-                  onClick={() => handleCategoryRemove(i)}
+                  onClick={() => handleFolderRemove(i)}
                   className="text-xs text-red-400 hover:text-red-300 px-2"
                 >
                   Remove
@@ -122,13 +122,13 @@ export default function Settings() {
             ))}
             <div className="flex items-center gap-2">
               <input
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                placeholder="New category"
+                value={newFolder}
+                onChange={(e) => setNewFolder(e.target.value)}
+                placeholder="New folder"
                 className={`${inputClass} flex-1`}
               />
               <button
-                onClick={handleCategoryAdd}
+                onClick={handleFolderAdd}
                 className="text-xs bg-indigo-600 hover:bg-indigo-500 rounded-lg px-3 py-1.5 font-medium"
               >
                 Add

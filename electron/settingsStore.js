@@ -2,10 +2,14 @@ const fs = require('fs')
 const path = require('path')
 const { app } = require('electron')
 
+// Fixed classification categories the LLM picks from. Not user-editable —
+// distinct from `folders`, which is the user-defined Archive grouping.
+const CATEGORIES = ['Politics', 'Economy', 'Society', 'Culture', 'Entertainment', 'Sports', 'IT']
+
 const DEFAULT_SETTINGS = {
   backendUrl: 'http://127.0.0.1:3000',
   defaultOptions: { emoji: true, kidFriendly: false, language: 'ko' },
-  categories: ['Politics', 'Economy', 'Society', 'Culture', 'Entertainment', 'Sports', 'IT'],
+  folders: ['🚨 BREAKING NEWS', '⭐ My favorite', '🎉 Fun'],
   activeFolder: null,
   authStorage: {},
 }
@@ -43,4 +47,4 @@ function updateSettings(partial) {
   return cache
 }
 
-module.exports = { getSettings, updateSettings }
+module.exports = { getSettings, updateSettings, CATEGORIES }

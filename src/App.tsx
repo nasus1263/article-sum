@@ -76,6 +76,7 @@ export default function App() {
                 record={archiveDetail}
                 onBack={() => setPage('archive')}
                 onChatWithArticle={handleChatWithArticle}
+                onOpenArticle={handleOpenArchiveArticle}
               />
             )}
             {page === 'settings' && <Settings />}

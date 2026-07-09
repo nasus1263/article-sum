@@ -34,7 +34,7 @@ export interface ChatEvent {
 export interface PipelineSettings {
   backendUrl: string
   defaultOptions: SummaryOptions
-  categories: string[]
+  folders: string[]
   activeFolder: string | null
 }
 
@@ -43,6 +43,8 @@ export interface ContentRecord {
   url: string
   tag: 'Article' | 'Not Article'
   status: 'pending' | 'approved'
+  embedding?: number[] | null
+  similarity?: number
   data: {
     original?: string
     title?: string | null

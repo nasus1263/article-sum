@@ -69,7 +69,7 @@ export default function Pending() {
             className={inputClass}
           >
             <option value="">No folder</option>
-            {defaults.categories.map((c) => (
+            {defaults.folders.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

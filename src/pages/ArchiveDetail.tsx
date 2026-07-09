@@ -8,16 +8,27 @@ export default function ArchiveDetail({
   record,
   onBack,
   onChatWithArticle,
+  onOpenArticle,
 }: {
   record: ContentRecord
   onBack: () => void
   onChatWithArticle: (id: number) => void
+  onOpenArticle: (record: ContentRecord) => void
 }) {
   const [related, setRelated] = useState<ContentRecord[]>([])
   const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
 
   useEffect(() => {
-    window.api?.getRelated(record.id).then(setRelated)
+    console.log(`[ArchiveDetail] fetching related articles for id=${record.id}`)
+    window.api
+      ?.getRelated(record.id)
+      .then((r) => {
+        console.log(`[ArchiveDetail] id=${record.id} got ${r.length} related article(s):`, r)
+        setRelated(r)
+      })
+      .catch((e) => {
+        console.error(`[ArchiveDetail] id=${record.id} getRelated failed:`, e)
+      })
   }, [record.id])
 
   async function handleDelete() {
@@ -54,7 +65,7 @@ export default function ArchiveDetail({
           {record.data.category && (
             <span className="inline-block bg-slate-800 text-xs px-2 py-1 rounded-full">{record.data.category}</span>
           )}
-          {record.data.embeddingError && (
+          {(record.data.embeddingError || record.embedding == null) && (
             <span
               title={record.data.embeddingError}
               className="inline-block bg-amber-900/50 text-amber-400 text-xs px-2 py-1 rounded-full"
@@ -88,13 +99,20 @@ export default function ArchiveDetail({
                 return (
                   <button
                     key={r.id}
-                    onClick={() => setFullTextRecord(r)}
-                    className="text-left bg-slate-800/70 hover:bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col gap-1 w-48 flex-shrink-0"
+                    onClick={() => onOpenArticle(r)}
+                    className={`text-left bg-slate-800/70 hover:bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col gap-1 w-48 flex-shrink-0 ${
+                      r.similarity != null && r.similarity <= 0.5 ? 'opacity-50' : ''
+                    }`}
                   >
                     {r.data.images?.[0] ? (
                       <img src={cachedImageSrc(r.data.images[0])} alt="" className="h-20 w-full object-cover rounded-md" />
                     ) : (
                       <div className="h-20 w-full rounded-md bg-slate-700" />
+                    )}
+                    {r.similarity != null && (
+                      <span className="self-start text-[10px] font-medium bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">
+                        유사도 {Math.round(r.similarity * 100)}%
+                      </span>
                     )}
                     <span className="text-xs font-semibold text-slate-100 line-clamp-2">{r.data.title ?? r.url}</span>
                     {relatedSummary && <span className="text-xs text-slate-400 line-clamp-2">{relatedSummary}</span>}

@@ -70,6 +70,7 @@ function rowToRecord(row) {
     tag: row.tag,
     status: row.status,
     data: row.data,
+    embedding: row.embedding ?? null,
     createdAt: row.created_at,
   }
 }
@@ -95,15 +96,20 @@ async function updateContent(id, { tag, data, embedding }) {
 }
 
 async function getRelated(id) {
-  const { data, error } = await getClient().rpc('match_contents', { source_id: id })
-  if (error) throw error
-  return data.map(rowToRecord)
+  console.log(`[getRelated] calling match_contents rpc source_id=${id} match_count=5`)
+  const { data, error } = await getClient().rpc('match_contents', { source_id: id, match_count: 5 })
+  if (error) {
+    console.error(`[getRelated] rpc failed source_id=${id}:`, error)
+    throw error
+  }
+  console.log(`[getRelated] source_id=${id} got ${data.length} related row(s):`, data.map((r) => ({ id: r.id, similarity: r.similarity })))
+  return data.map((row) => ({ ...rowToRecord(row), similarity: row.similarity }))
 }
 
 async function listByStatus(status) {
   const { data, error } = await getClient()
     .from('contents')
-    .select('id, url, tag, status, data, created_at')
+    .select('id, url, tag, status, data, embedding, created_at')
     .eq('status', status)
     .order('id', { ascending: status === 'pending' })
   if (error) throw error
@@ -113,7 +119,7 @@ async function listByStatus(status) {
 async function getContent(id) {
   const { data, error } = await getClient()
     .from('contents')
-    .select('id, url, tag, status, data, created_at')
+    .select('id, url, tag, status, data, embedding, created_at')
     .eq('id', id)
     .single()
   if (error) throw error
