@@ -90,6 +90,12 @@ body { margin: 0; min-width: 320px; min-height: 100vh; background: #f7f7f3; }
 .favorite-thumb { width: 100%; height: 130px; margin-bottom: 18px; object-fit: cover; background: #d5d0c7; filter: grayscale(1); }
 .favorites-preview .favorite-art, .favorites-preview .favorite-thumb { background: #e4ded3; }
 .category-dashboard { display: flex; flex-direction: column; gap: 54px; }
+.category-filters { display: flex; flex-wrap: wrap; gap: 26px; }
+.category-filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.category-filter-group > span { font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #6f6a63; }
+.category-filter-group > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.category-filter-group button { padding: 6px 12px; border: 1px solid #11110f; background: transparent; color: #11110f; font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+.category-filter-group button.active { background: #11110f; color: #f5f2e9; }
 .category-section > header { margin-bottom: 22px; }
 .category-section > header h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
 .category-folder-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }

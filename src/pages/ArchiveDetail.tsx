@@ -76,52 +76,57 @@ export default function ArchiveDetail({
           <span className="text-xs text-slate-600 ml-auto">{new Date(record.createdAt).toLocaleString('en-US')}</span>
         </div>
         {record.data.title && <p className="text-sm font-semibold text-slate-100">{record.data.title}</p>}
-        {record.data.images && record.data.images.length > 0 && (
-          <div className="flex flex-row gap-2 overflow-x-auto pb-1">
-            {record.data.images.map((src, i) => (
-              <img
-                key={i}
-                src={cachedImageSrc(src)}
-                alt=""
-                className="max-h-[200px] w-auto object-contain rounded-lg flex-shrink-0"
-              />
-            ))}
-          </div>
-        )}
-        {summary && <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{summary}</p>}
 
-        {related.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <h4 className="text-xs font-semibold text-slate-400">Related articles</h4>
-            <div className="flex flex-row gap-3 overflow-x-auto pb-1">
-              {related.map((r) => {
-                const relatedSummary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => onOpenArticle(r)}
-                    className={`text-left bg-slate-800/70 hover:bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col gap-1 w-48 flex-shrink-0 ${
-                      r.similarity != null && r.similarity <= 0.5 ? 'opacity-50' : ''
-                    }`}
-                  >
-                    {r.data.images?.[0] ? (
-                      <img src={cachedImageSrc(r.data.images[0])} alt="" className="h-20 w-full object-cover rounded-md" />
-                    ) : (
-                      <div className="h-20 w-full rounded-md bg-slate-700" />
-                    )}
-                    {r.similarity != null && (
-                      <span className="self-start text-[10px] font-medium bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">
-                        유사도 {Math.round(r.similarity * 100)}%
-                      </span>
-                    )}
-                    <span className="text-xs font-semibold text-slate-100 line-clamp-2">{r.data.title ?? r.url}</span>
-                    {relatedSummary && <span className="text-xs text-slate-400 line-clamp-2">{relatedSummary}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        <div className="brief-grid">
+          <section className="brief-article">
+            <div className="brief-label light">ARTICLE</div>
+            <p className="whitespace-pre-wrap">{summary ?? 'No summary available.'}</p>
+          </section>
+          <aside className="brief-image">
+            {record.data.images?.[0] ? (
+              <img
+                src={cachedImageSrc(record.data.images[0])}
+                alt=""
+                className="max-h-[300px] max-w-full object-contain"
+              />
+            ) : (
+              <span>ARTICLE IMAGE</span>
+            )}
+          </aside>
+
+          {related.length > 0 && (
+            <section className="brief-recommendations">
+              <h2>Category recommendations</h2>
+              <div className="flex flex-row gap-3 overflow-x-auto pb-1">
+                {related.map((r) => {
+                  const relatedSummary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => onOpenArticle(r)}
+                      className={`text-left bg-slate-800/70 hover:bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col gap-1 w-48 flex-shrink-0 ${
+                        r.similarity != null && r.similarity <= 0.5 ? 'opacity-50' : ''
+                      }`}
+                    >
+                      {r.data.images?.[0] ? (
+                        <img src={cachedImageSrc(r.data.images[0])} alt="" className="h-20 w-full object-cover rounded-md" />
+                      ) : (
+                        <div className="h-20 w-full rounded-md bg-slate-700" />
+                      )}
+                      {r.similarity != null && (
+                        <span className="self-start text-[10px] font-medium bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">
+                          유사도 {Math.round(r.similarity * 100)}%
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-slate-100 line-clamp-2">{r.data.title ?? r.url}</span>
+                      {relatedSummary && <span className="text-xs text-slate-400 line-clamp-2">{relatedSummary}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+        </div>
 
         <div className="flex justify-end gap-2 flex-wrap">
           {record.data.original && !record.data.processing && (

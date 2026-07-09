@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ContentRecord } from '../types/global'
 import { cachedImageSrc } from '../utils/imageCache'
 import { usePipelineDefaults } from '../hooks/usePipelineDefaults'
+import FeaturedArchiveList, { FeaturedArchiveListPreview } from '../components/FeaturedArchiveList'
 
 const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex flex-col gap-3'
 const inputClass =
   'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+
+// Sentinel for the folder filter's "None" option (items with no folder
+// assigned), distinct from `null` which means "ALL" (no filter applied).
+const NO_FOLDER = ' __no_folder__'
 
 export default function Archive({
   onChatWithArticle,
@@ -18,6 +23,7 @@ export default function Archive({
 }) {
   const [records, setRecords] = useState<ContentRecord[] | null>(null)
   const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
   const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [fullTextRecord, setFullTextRecord] = useState<ContentRecord | null>(null)
@@ -42,6 +48,11 @@ export default function Archive({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchInput), 250)
+    return () => clearTimeout(id)
+  }, [searchInput])
+
   function toggleCategoryFilter(category: string) {
     setCategoryFilter((prev) => {
       const next = new Set(prev)
@@ -63,7 +74,8 @@ export default function Archive({
     const query = search.trim().toLowerCase()
     return (records ?? []).filter((r) => {
       if (categoryFilter.size > 0 && !(r.data.category && categoryFilter.has(r.data.category))) return false
-      if (folderFilter !== null && r.data.folder !== folderFilter) return false
+      if (folderFilter === NO_FOLDER && r.data.folder) return false
+      if (folderFilter !== null && folderFilter !== NO_FOLDER && r.data.folder !== folderFilter) return false
       if (!query) return true
       const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
       return r.url.toLowerCase().includes(query) || (summary?.toLowerCase().includes(query) ?? false)
@@ -71,20 +83,7 @@ export default function Archive({
   }, [records, search, categoryFilter, folderFilter])
 
   if (!window.api) {
-    if (variant === 'favorites') {
-      return (
-        <div className="favorites-showcase favorites-preview">
-          <article className="favorite-feature">
-            <div className="favorite-art" />
-            <div className="favorite-copy"><span>FEATURED</span><h3>Your favorite articles</h3><p>Saved stories will appear here with their key summaries.</p></div>
-          </article>
-          <div className="favorite-grid">
-            <article><div className="favorite-thumb" /><span>RECENTLY SAVED</span><h3>Article title</h3><p>A short summary of the saved article appears here.</p></article>
-            <article><div className="favorite-thumb" /><span>RECENTLY SAVED</span><h3>Article title</h3><p>A short summary of the saved article appears here.</p></article>
-          </div>
-        </div>
-      )
-    }
+    if (variant === 'favorites') return <FeaturedArchiveListPreview />
     return (
       <div className="category-dashboard category-preview">
         <section className="category-section">
@@ -107,32 +106,47 @@ export default function Archive({
   }
 
   if (variant === 'favorites') {
-    const [featured, ...rest] = filtered
-    const summaryFor = (record: ContentRecord) =>
-      record.data.summaries ? Object.values(record.data.summaries)[0] : undefined
-
-    if (!featured) return <p className="text-slate-500 text-sm">No favorite articles yet.</p>
-
     return (
-      <div className="favorites-showcase">
-        <article className="favorite-feature" onClick={() => onOpenArticle(featured)}>
-          {featured.data.images?.[0] ? <img src={cachedImageSrc(featured.data.images[0])} alt="" /> : <div className="favorite-art" />}
-          <div className="favorite-copy">
-            <span>{featured.data.category ?? 'FEATURED'}</span>
-            <h3>{featured.data.title ?? 'Saved article'}</h3>
-            <p>{summaryFor(featured) ?? featured.url}</p>
-          </div>
-        </article>
-        <div className="favorite-grid">
-          {rest.slice(0, 2).map((record) => (
-            <article key={record.id} onClick={() => onOpenArticle(record)}>
-              {record.data.images?.[0] ? <img className="favorite-thumb" src={cachedImageSrc(record.data.images[0])} alt="" /> : <div className="favorite-thumb" />}
-              <span>RECENTLY SAVED</span>
-              <h3>{record.data.title ?? 'Saved article'}</h3>
-              <p>{summaryFor(record) ?? record.url}</p>
-            </article>
-          ))}
+      <div className="flex flex-col gap-7">
+        <div className="brief-search">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" />
+          </svg>
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by URL or summary"
+            aria-label="Search archived articles"
+          />
         </div>
+        <div className="category-filters">
+          {categories.length > 0 && (
+            <div className="category-filter-group">
+              <span>Category</span>
+              <div>
+                {categories.map((c) => (
+                  <button key={c} className={categoryFilter.has(c) ? 'active' : ''} onClick={() => toggleCategoryFilter(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="category-filter-group">
+            <span>Folder</span>
+            <div>
+              <button className={folderFilter === null ? 'active' : ''} onClick={() => setFolderFilter(null)}>ALL</button>
+              <button className={folderFilter === NO_FOLDER ? 'active' : ''} onClick={() => setFolderFilter(NO_FOLDER)}>None</button>
+              {(defaults?.folders ?? []).map((f) => (
+                <button key={f} className={folderFilter === f ? 'active' : ''} onClick={() => setFolderFilter(f)}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="brief-label">ARCHIVE</div>
+        <FeaturedArchiveList records={filtered} onOpenArticle={onOpenArticle} emptyMessage="No favorite articles yet." />
       </div>
     )
   }

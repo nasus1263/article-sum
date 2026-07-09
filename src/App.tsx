@@ -8,7 +8,7 @@ import Login from './pages/Login'
 import { useAuth } from './hooks/useAuth'
 import type { ContentRecord } from './types/global'
 
-type Page = 'pending' | 'archive' | 'archive-detail' | 'favorites' | 'chat' | 'settings'
+type Page = 'pending' | 'archive' | 'archive-detail' | 'storage' | 'favorites' | 'chat' | 'settings'
 
 function Icon({ name, size = 22 }: { name: string; size?: number }) {
   const paths: Record<string, ReactNode> = {
@@ -16,6 +16,8 @@ function Icon({ name, size = 22 }: { name: string; size?: number }) {
     close: <><path d="m6 6 12 12M18 6 6 18" /></>,
     folder: <><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" /></>,
     search: <><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>,
+    box: <><path d="M3.5 8 12 4l8.5 4M3.5 8v8L12 20l8.5-4V8M3.5 8 12 12m0 0 8.5-4M12 12v8" /></>,
     star: <><path d="m12 3 2.75 5.57 6.15.9-4.45 4.33 1.05 6.12L12 17.03l-5.5 2.89 1.05-6.12L3.1 9.47l6.15-.9z" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
     arrow: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
@@ -47,7 +49,8 @@ export default function App() {
 
   const navItems: { id: Page; label: string; icon: string }[] = [
     { id: 'archive', label: 'Categories', icon: 'folder' },
-    { id: 'pending', label: 'Search', icon: 'search' },
+    { id: 'pending', label: 'Pending', icon: 'clock' },
+    { id: 'storage', label: 'Archive', icon: 'box' },
     { id: 'favorites', label: 'Favorites', icon: 'star' },
     { id: 'settings', label: 'Profile', icon: 'user' },
   ]
@@ -119,39 +122,30 @@ export default function App() {
                 </form>
                 {urlState === 'error' && <p className="form-note error">Enter a valid URL beginning with http:// or https://</p>}
                 {urlState === 'done' && <p className="form-note">Your article is being prepared below.</p>}
-
-                <div className="brief-grid">
-                  <section className="brief-summary">
-                    <div className="brief-label">SUMMARY</div>
-                    <Pending />
-                  </section>
-                  <section className="brief-article">
-                    <div className="brief-label light">ARTICLE</div>
-                    <p>Paste a link above to create a focused summary and save the full article to your library.</p>
-                  </section>
-                  <aside className="brief-image">
-                    <Icon name="folder" size={28} />
-                    <span>ARTICLE IMAGE</span>
-                  </aside>
-                  <section className="brief-recommendations">
-                    <h2>Category recommendations</h2>
-                    <div className="recommendation-columns">
-                      <div><i /><i /><i /><i /></div>
-                      <div><i /><i /><i /><i /></div>
-                    </div>
-                  </section>
-                </div>
+                <Pending />
               </section>
             )}
-            {page !== 'pending' && <div className={`page-body ${page === 'archive' || page === 'favorites' ? 'category-page-body' : ''}`}>
-              {(page === 'archive' || page === 'favorites') && (
-                <>
-                  <Archive
-                    variant={page === 'favorites' ? 'favorites' : 'library'}
-                    onChatWithArticle={handleChatWithArticle}
-                    onOpenArticle={(record) => { setArchiveDetail(record); setPage('archive-detail') }}
-                  />
-                </>
+            {page !== 'pending' && <div className={`page-body ${page === 'archive' || page === 'storage' || page === 'favorites' ? 'category-page-body' : ''}`}>
+              {page === 'archive' && (
+                <Archive
+                  variant="library"
+                  onChatWithArticle={handleChatWithArticle}
+                  onOpenArticle={(record) => { setArchiveDetail(record); setPage('archive-detail') }}
+                />
+              )}
+              {page === 'storage' && (
+                // Search field (with filters + brief-label) shared with the Categories tab's future Favorites view — see FeaturedArchiveList.tsx
+                <Archive
+                  variant="favorites"
+                  onChatWithArticle={handleChatWithArticle}
+                  onOpenArticle={(record) => { setArchiveDetail(record); setPage('archive-detail') }}
+                />
+              )}
+              {page === 'favorites' && (
+                // Favorites feature not implemented yet, so nothing is shown for now.
+                // Once implemented, reuse <FeaturedArchiveList> (src/components/FeaturedArchiveList.tsx) here,
+                // the same module the Archive and Storage tabs use above.
+                null
               )}
               {page === 'archive-detail' && archiveDetail && (
                 <ArchiveDetail
