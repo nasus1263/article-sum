@@ -7,6 +7,10 @@ const cardClass = 'bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex f
 const inputClass =
   'bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
+// Sentinel for the folder filter's "None" option (items with no folder
+// assigned), distinct from `null` which means "ALL" (no filter applied).
+const NO_FOLDER = ' __no_folder__'
+
 export default function Archive({
   onChatWithArticle,
   onOpenArticle,
@@ -61,7 +65,8 @@ export default function Archive({
     const query = search.trim().toLowerCase()
     return (records ?? []).filter((r) => {
       if (categoryFilter.size > 0 && !(r.data.category && categoryFilter.has(r.data.category))) return false
-      if (folderFilter !== null && r.data.folder !== folderFilter) return false
+      if (folderFilter === NO_FOLDER && r.data.folder) return false
+      if (folderFilter !== null && folderFilter !== NO_FOLDER && r.data.folder !== folderFilter) return false
       if (!query) return true
       const summary = r.data.summaries ? Object.values(r.data.summaries)[0] : undefined
       return r.url.toLowerCase().includes(query) || (summary?.toLowerCase().includes(query) ?? false)
@@ -121,6 +126,14 @@ export default function Archive({
               }`}
             >
               ALL
+            </button>
+            <button
+              onClick={() => setFolderFilter(NO_FOLDER)}
+              className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+                folderFilter === NO_FOLDER ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              None
             </button>
             {(defaults?.folders ?? []).map((f) => (
               <button
